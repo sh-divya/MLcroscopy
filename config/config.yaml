@@ -1,0 +1,9 @@
+defaults:
+  - model: wide
+  - task: scratch
+  - log: online
+  - _self_
+test: false
+device: "cpu"
+dtype: float32
+seed: 12345

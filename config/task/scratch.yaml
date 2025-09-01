@@ -1,0 +1,21 @@
+base_data: /network/scratch/d/divya.sharma/ada/data
+transforms:
+  micro:
+    norm:
+      mean: 153.62
+      std: 27.63
+    crop: 240
+    color:
+      contrast: 0.2
+      brightness: 0.2
+    flip:
+      - "horizontal"
+      - "vertical"
+  xrf:
+    norm:
+      mean: [378035.5, 5707524.33, 24599.7, 5361.4]
+      std: [362643.5, 4208579.6, 4208579.6, 2608.0]
+    flip:
+      - "horizontal"
+      - "vertical"
+  target: False

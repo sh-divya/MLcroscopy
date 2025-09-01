@@ -1,0 +1,10 @@
+defaults:
+  - model: mlp
+  - task: expt
+  - log: online
+  - sweep: sweep_mlp
+  - _self_
+trials: 60
+device: "cpu"
+dtype: float32
+seed: 12345
