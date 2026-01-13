@@ -2,14 +2,15 @@ arch:
   hidden_dim: 128
   hidden_layers: 5
 optim:
+  loss: l2
   folds: 3
-  epochs: 80
+  epochs: 30
   batch_size: 8
   num_workers: 1
   batch_norm: True
   drop_rate: 0.0
   learning-rate: 0.0006649375906340088
   scheduler:
-    name: ""
-    monitor: "Total train mae"
+    name: "ReduceLROnPlateau"
+    monitor: "total_val_eth_mae"
   early-stopping: False

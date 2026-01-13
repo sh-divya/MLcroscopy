@@ -13,6 +13,7 @@ from mlcroscopy.utils.misc import get_expt_choices
 
 warnings.filterwarnings("ignore", ".*does not have many workers.*")
 
+
 COUNT = 0
 
 
@@ -36,7 +37,7 @@ def objective(trial, cfg, base_cfg):
             if k == "lr":
                 low = optim_cfg["lr"]["min"]
                 high = optim_cfg["lr"]["max"]
-                new_cfg["model"]["optim"][k] = trial.suggest_float("lr", low, high, log=True)
+                new_cfg["model"]["optim"]["learning-rate"] = trial.suggest_float("lr", low, high, log=True)
             elif k == "scheduler":
                 new_cfg["model"]["optim"][k]["name"] = trial.suggest_categorical(k, v["name"])
             else:
@@ -48,10 +49,8 @@ def objective(trial, cfg, base_cfg):
         pass
 
     new_cfg["log"]["name"] = new_cfg["log"]["name"] + str(COUNT)
-    # print(new_cfg["log"]["name"])
     COUNT = int(COUNT) + 1
-    # print(COUNT)
-    # raise Exception
+
     return train(new_cfg)
 
 

@@ -1,14 +1,15 @@
 parameters:
   model:
     arch:
-      hidden_channels: [64, 128, 196, 256, 320, 384]
+      hidden_dim: [64, 128, 196, 256, 320, 384]
       hidden_layers: [2, 3, 4, 5]
     optim:
+      loss: ["l2", "smoothl1"]
       batch_size: [8, 12, 16]
       es_patience: [3,5,7]
       lr:
-        min: 0.0003
-        max: 0.003
-      epochs: [20, 25, 30, 40, 50]
-      scheduler:
-        name: ["StepLR", "ReduceLROnPlateau", ""]
+        min: 0.003
+        max: 0.03
+      epochs: [20, 25, 30]
+    # scheduler:
+    #   name: ["StepLR", "ReduceLROnPlateau", ""]

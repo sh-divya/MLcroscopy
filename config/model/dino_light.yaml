@@ -1,0 +1,20 @@
+arch:
+  name: dinov3-vits16-pretrain-lvd1689m
+  pred_head_width: 16
+  pred_hidden_len: 3
+  xrf_conv_width: 16
+  xrf_res_len: 1
+
+optim:
+  loss: l2
+  folds: 3
+  epochs: 30
+  batch_size: 16
+  num_workers: 1
+  batch_norm: True
+  drop_rate: 0.0
+  learning-rate: 0.003
+  scheduler:
+    name: "ReduceLROnPlateau"
+    monitor: "total_val_eth_mae"
+  early-stopping: False

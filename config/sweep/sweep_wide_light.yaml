@@ -1,0 +1,18 @@
+parameters:
+  model:
+    arch:
+      pred_head_width: [32, 64, 128, 256]
+      pred_hidden_len: [1, 2, 3]
+      micro_inp_width: [2, 3, 4, 5]
+      micro_out_width: [4, 8, 16, 32]
+      micro_res_n: [2, 3, 4, 5]
+      xrf_conv_width: [4, 8, 16, 32]
+      xrf_res_len: [1, 2, 3]
+    optim:
+      drop_rate: [0.0, 0.1, 0.2]
+      batch_norm: [True, False]
+      batch_size: [8, 12, 16]
+      lr:
+        min: 0.000001
+        max: 0.001
+      epochs: [20, 25, 30]

@@ -1,36 +1,18 @@
-from mlcroscopy.data.dataset import ScopyTensor, OnlyExpt
-from mlcroscopy.models.archs import ScopyResNet, ExptMLP
-
+from mlcroscopy.data.dataset import ScopyTensor, OnlyExpt, ImgPlusExpt
+from mlcroscopy.models.archs import (
+    ScopyResNet,
+    ScopyResLight,
+    ExptMLP,
+    BothTensorandExpt,
+    ScopyDino
+)
+from mlcroscopy.utils.constants import XRF_Z, MICRO_Z, EXPT_Z, TRANSFROMS_KEY
 
 import torch
 import torch.nn as nn
+from torchvision.transforms import Compose
 from torch.utils.data import DataLoader, Subset
-from torchvision.transforms import (
-    Normalize,
-    RandomCrop,
-    ColorJitter,
-    RandomVerticalFlip,
-    RandomHorizontalFlip,
-    Compose,
-    Grayscale,
-)
-
-
 from sklearn.model_selection import KFold
-
-XRF_Z = {
-    "mean": (378035.5, 5707524.33, 24599.7, 5361.4),
-    "std": (362643.5, 4208579.6, 4208579.6, 2608.0),
-}
-
-MICRO_Z = {"mean": 153.62, "std": 27.63}
-
-transforms_key = {
-    "norm": lambda x: Normalize(x["mean"], x["std"]),
-    "crop": lambda x: RandomCrop(x),
-    "flip": {"horizontal": RandomHorizontalFlip(), "vertical": RandomVerticalFlip()},
-    "color": lambda x: ColorJitter(**x),
-}
 
 
 def weights_init(m):
@@ -60,20 +42,61 @@ def make_model(config):
             bn,
             drop,
         ).to(torch.float)
+    elif model_name == "wide_light":
+        bn = optim["batch_norm"]
+        drop = optim["drop_rate"]
+        model = ScopyResLight(
+            model["pred_head_width"],
+            model["pred_hidden_len"],
+            model["micro_inp_width"],
+            model["micro_out_width"],
+            model["micro_res_n"],
+            model["xrf_conv_width"],
+            model["xrf_res_len"],
+            bn,
+            drop,
+        ).to(torch.float)
+    elif model_name == "dino_light":
+        bn = optim["batch_norm"]
+        drop = optim["drop_rate"]
+        model = ScopyDino(model["pred_hidden_len"],
+                          model["pred_head_width"],
+                          model["xrf_conv_width"],
+                          model["xrf_res_len"],
+                          drop, bn, model["name"]).to(torch.float)
+    elif model_name == "concat":
+        bn = optim["batch_norm"]
+        drop = optim["drop_rate"]
+        model = BothTensorandExpt(
+            model["pred_head_len"],
+            model["pred_head_width"],
+            model["pred_hidden_len"],
+            model["micro_inp_width"],
+            model["micro_out_width"],
+            model["micro_res_n"],
+            model["xrf_conv_width"],
+            model["xrf_res_len"],
+            model["expt_hidden_len"],
+            bn,
+            drop,
+        ).to(torch.float)
     elif model_name == "mlp":
         bn = optim["batch_norm"]
         model = ExptMLP(model["hidden_dim"], model["hidden_layers"], bn).to(torch.float)
     else:
         raise ValueError(f"{model_name} not available")
 
-    model.apply(weights_init)
+    if model_name in ["mlp", "concat", "wide_light", "wide"]:
+        model.apply(weights_init)
+    elif model_name in ["dino_light"]:
+        pass
     return model
 
 
 def make_datasets(config):
     data_type = config["task"]["name"]
     data = config["task"]
-    if data_type == "scratch":
+    if data_type in ["scratch", "dino"]:
         microt = make_transforms("micro", data["transforms"]["micro"])
         xrft = make_transforms("xrf", data["transforms"]["xrf"])
         train_data = ScopyTensor(
@@ -92,9 +115,29 @@ def make_datasets(config):
         # test_loader = DataLoader(test_data, config["model"]["optim"]["batch_size"], shuffle=False)
         return train_data, test_data
     elif data_type == "expt":
-        train_data = OnlyExpt(data["base_data"], "train.idx", data["target"])
-        test_data = OnlyExpt(data["base_data"], "test.idx")
+        xstats= {"mean": torch.tensor(EXPT_Z["mean"]), "std": torch.tensor(EXPT_Z["std"])}
+        train_data = OnlyExpt(data["base_data"], "train.idx", xstats, data["target"])
+        test_data = OnlyExpt(data["base_data"], "test.idx", xstats=EXPT_Z)
         return train_data, test_data
+    elif data_type == "both":
+        microt = make_transforms("micro", data["transforms"]["micro"])
+        xrft = make_transforms("xrf", data["transforms"]["xrf"])
+        train_data = ImgPlusExpt(
+            data["base_data"],
+            "train.idx",
+            micro_transform=microt,
+            xrf_transform=xrft,
+            ytransform=data["transforms"]["target"],
+        )
+        test_data = ImgPlusExpt(
+            data["base_data"],
+            "test.idx",
+        )
+        return train_data, test_data
+    # elif data_type == "dino":
+    #     microt = make_transforms("micro", data["transforms"]["micro"])
+    #     xrft = make_transforms("xrf", data["transforms"]["xrf"])
+
     else:
         raise ValueError(f"{data_type} not available")
 
@@ -118,7 +161,7 @@ def make_crossval_splits(train_data, config, seed=12345):
 def make_transforms(src, augs):
     transforms = []
     for a, v in augs.items():
-        t = transforms_key[a]
+        t = TRANSFROMS_KEY[a]
         # if a == 'norm':
         #     if src == "micro":
         #         t = t(MICRO_Z["mean"], MICRO_Z["std"])
@@ -126,7 +169,7 @@ def make_transforms(src, augs):
         #         t = t(XRF_Z["mean"], XRF_Z["std"])
         #     else:
         #         raise KeyError(f"Normalization for {src} not available")
-        # elif isinstance(transforms_key[a], list):
+        # elif isinstance(TRANSFORMS_KEY[a], list):
         #     t = [i() for i in t]
         # elif a == "color":
         #     t = t(brightness=(0.2, 1.2), contrast=(0.2, 1.2))

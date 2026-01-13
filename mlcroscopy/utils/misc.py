@@ -4,9 +4,40 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
 import torch
 
+from matplotlib import pyplot as plt
+from pathlib import Path
 import numpy as np
 import random
 import os
+
+ROOT = Path(__file__).parent.parent.parent
+
+
+def plot_data_split(
+    train, val, folds=3, split_idx=0, fig_axes=None, xmins=(0.0, 0.0), xmax=(2.0, 2.0)
+):
+    if not fig_axes:
+        figure, axes = plt.subplots(2, folds)
+        axes[0][0].set_ylabel("FE (Eth)")
+        axes[1][0].set_ylabel("FE (CO)")
+        figure.suptitle("Values in Splits")
+
+        for i, ax in enumerate(axes):
+            for a in ax:
+                a.set_ylim(xmins[i], xmax[i])
+    else:
+        figure, axes = fig_axes
+
+    y1 = list(zip(*[j.tolist() for _, j in val]))
+    y2 = list(zip(*[j.tolist() for _, j in train]))
+
+    axes[0][split_idx].hist(y1[0], 10, density=True, alpha=0.5, label="Val")
+    axes[1][split_idx].hist(y1[1], 10, density=True, alpha=0.5, label="Val")
+
+    axes[0][split_idx].hist(y2[0], 10, density=True, alpha=0.5, label="Train")
+    axes[1][split_idx].hist(y2[1], 10, density=True, alpha=0.5, label="Train")
+
+    return figure, axes
 
 
 def set_seeds(seed=0):

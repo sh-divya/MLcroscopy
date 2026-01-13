@@ -6,9 +6,10 @@ arch:
   micro_out_width: 8
   micro_res_n: 3
   xrf_conv_width: 16
-  xrf_res_len: 1
+  xrf_res_len: 2
 
 optim:
+  loss: l2
   folds: 3
   epochs: 80
   batch_size: 16

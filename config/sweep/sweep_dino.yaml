@@ -1,0 +1,19 @@
+parameters:
+  model:
+    arch:
+      pred_head_width: [1600, 3200, 6400]
+      pred_hidden_len: [1, 2, 3, 4]
+      xrf_conv_width: [16, 32, 64]
+      xrf_res_len: [2, 3, 4, 5]
+    optim:
+      drop_rate: [0.0, 0.1, 0.2]
+      batch_norm: [True, False]
+      batch_size: [8, 12, 16]
+      lr:
+        min: 0.000001
+        max: 0.001
+      epochs: [20, 25, 30]
+
+# reduce dimensions before flattening
+# all cnn
+# gradually reduce MLP dim, low depth (maybe just 1)

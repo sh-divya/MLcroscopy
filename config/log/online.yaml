@@ -1,8 +1,10 @@
 user: sh-divya
-project: ada
+project: better-ada
 name: null
-metrics:
-  - None
-  - None
+metric:
+  - Eth
+  - MAE
 results: /network/scratch/d/divya.sharma/runs/ada
+# data_img: /network/scratch/d/divya.sharma/ada/MLcroscopy/figures
+data_img: null
 watch: False
