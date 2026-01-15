@@ -1,4 +1,5 @@
 arch:
+  _target_: mlcroscopy.models.archs.BothTensorandExpt
   pred_head_len: 3
   pred_head_width: 16
   pred_hidden_len: 3

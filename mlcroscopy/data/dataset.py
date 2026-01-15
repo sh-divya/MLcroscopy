@@ -167,11 +167,11 @@ class XRF_OG(Dataset):
 class OnlyExpt(Dataset):
     targets = ["FE (Eth)", "FE (CO)"]
 
-    def __init__(self, root, split_fptr, xstats, ytransform=False):
+    def __init__(self, root, split_fptr, expt_transform=None, ytransform=False):
         self.root = Path(root)
         self.csv = pd.read_csv(self.root / "triplet.csv")
         self.idx = [int(i) for i in open(self.root / split_fptr, "r")]
-        self.xstats = xstats
+        self.expt_transform = expt_transform
         if ytransform:
             self.ytransform = self.get_triplet_stats()
         else:
@@ -194,8 +194,8 @@ class OnlyExpt(Dataset):
         idx = self.idx[idx]
         x = torch.tensor(self.csv.iloc[idx, :-3].values)
         y = torch.tensor(self.csv.iloc[idx, -3:-1].values)
-        if self.xstats:
-            x = (x - self.xstats["mean"]) / self.xstats["std"]
+        if self.expt_transform:
+            x = self.expt_transform(x)
 
         triplet_id = self.csv.iloc[idx, -1]
         if self.ytransform:
@@ -219,12 +219,14 @@ class ImgPlusExpt(ScopyTensor):
         ytransform=None,
     ):
         super().__init__(root, split_fptr, micro_transform, xrf_transform, ytransform)
-        self.xstats = expt_transform
+        self.expt_transform = expt_transform
 
     def __getitem__(self, idx):
         img, y = super().__getitem__(idx)
         img_micro, img_xrf = img
         idx = self.idx[idx]
         expt_x = torch.tensor(self.csv.iloc[idx, :-3].values).to(torch.float32)
+        if self.expt_transform:
+            expt_x = self.expt_transform(x)
 
         return (img_micro, img_xrf, expt_x), y

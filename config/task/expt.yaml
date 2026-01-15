@@ -1,2 +1,6 @@
-base_data: /network/scratch/d/divya.sharma/ada/data
+_target_: mlcroscopy.data.dataset.OnlyExpt
+transforms:
+  oneD:
+    mean:
+    std:
 target: False

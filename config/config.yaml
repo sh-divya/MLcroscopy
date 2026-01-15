@@ -3,6 +3,7 @@ defaults:
   - task: scratch
   - log: online
   - _self_
+data_path: /network/scratch/d/divya.sharma/ada/data
 test: false
 device: "cpu"
 dtype: float32

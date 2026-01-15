@@ -1,4 +1,5 @@
 arch:
+  _target_: mlcroscopy.models.archs.ExptMLP
   hidden_dim: 128
   hidden_layers: 5
 optim:

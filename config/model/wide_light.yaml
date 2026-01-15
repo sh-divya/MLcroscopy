@@ -1,4 +1,5 @@
 arch:
+  _target_: mlcroscopy.models.archs.ScopyResLight
   pred_head_width: 16
   pred_hidden_len: 3
   micro_inp_width: 2

@@ -13,6 +13,25 @@ import os
 ROOT = Path(__file__).parent.parent.parent
 
 
+class Norm1D:
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+    
+    def __call__(self, x):
+        return (x - self.mean) / self.std
+    
+    def denorm(self, x):
+        return (x * self.std) + self.mean
+
+
+def get_all_kv(d):
+    for k, v in d.items():
+        if isinstance(v, dict):
+            yield from get_all_kv(v)
+        else:
+            yield (k, v)
+
 def plot_data_split(
     train, val, folds=3, split_idx=0, fig_axes=None, xmins=(0.0, 0.0), xmax=(2.0, 2.0)
 ):

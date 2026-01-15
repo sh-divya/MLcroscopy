@@ -1,4 +1,4 @@
-base_data: /network/scratch/d/divya.sharma/ada/data
+_target_: mlcroscopy.data.dataset.ScopyTensor
 transforms:
   micro:
     norm:
@@ -18,4 +18,4 @@ transforms:
     flip:
       - "horizontal"
       - "vertical"
-  target: False
+target: False
