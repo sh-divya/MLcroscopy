@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from omegaconf import DictConfig
+
 class WideResBlock(nn.Module):
     def __init__(self, width, droprate=0.2):
         super().__init__()
@@ -99,7 +101,51 @@ class XRFBlock(nn.Module):
         for l in self.conv2:
             x = l(x)
         return x
-    
-class ClassicXRFBlock(nn.Module):
-    def __init__(conv_width, batch_norm=False):
-        pass
+
+def res_block():
+    pass
+
+
+def conv_block(
+    input_channels, kernel, layers, downsample, activation, batch_norm, droprate
+):
+    block = []
+    curr = input_channels
+
+    for i, l in enumerate(layers):
+        block.append(nn.Conv2d(curr, l, **kernel))
+        curr = l
+        if batch_norm:
+            block.append(nn.BatchNorm2d(l))
+        block.append(activation())
+        block.append(nn.Dropout(droprate if droprate else 0.0))
+        if downsample is not None:
+            if downsample["type"] == "conv":
+                block.append(nn.Conv2d(curr, curr, **downsample["kernel"]))
+            elif downsample["type"] == "pool":
+                block.append(nn.MaxPool2d(**downsample["kernel"]))
+            elif downsample["type"] == "skip":
+                pass
+            else:
+                raise KeyError("Downsample type has not been implemented")
+
+    return block
+
+
+def linear_block(input_dim, layers, activation, batch_norm, droprate):
+    block = []
+    curr = input_dim
+
+    if isinstance(layers, (dict, DictConfig)):
+        layers = [layers["hidden"] for _ in range(layers["num"])]
+
+
+    for i, l in enumerate(layers):
+        block.append(nn.Linear(curr, l))
+        curr = l
+        if batch_norm:
+            block.append(nn.BatchNorm1d(l))
+        block.append(activation())
+        block.append(nn.Dropout(droprate if droprate else 0.0))
+
+    return block

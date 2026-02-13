@@ -2,8 +2,8 @@ _target_: mlcroscopy.data.dataset.ImgPlusExpt
 transforms:
   micro:
     norm:
-      mean: 153.62
-      std: 27.63
+      mean: [166.0630, 151.4283, 124.3986]
+      std: [29.7448, 28.4966, 30.6221]
     crop: 240
     color:
       contrast: 0.2
@@ -18,4 +18,4 @@ transforms:
     flip:
       - "horizontal"
       - "vertical"
-target: False
+ytransform: False

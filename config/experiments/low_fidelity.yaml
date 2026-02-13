@@ -1,0 +1,31 @@
+# Best performing MLP results
+# The hidden layers are all the dimension
+# the y values are not augmented
+defaults:
+  - override /model: mlp
+  - override /task: expt
+  - override /log: debug
+
+
+model:
+  arch:
+      _target_: mlcroscopy.models.archs.ExptMLP
+      hidden_dim: 256
+      hidden_layers: 4
+  optim:
+      batch_norm: true
+      batch_size: 8
+      drop_rate: 0
+      early-stopping: false
+      epochs: 30
+      es_patience: 5
+      folds: 3
+      learning-rate: 0.007959528835603741
+      loss: smoothl1
+      num_workers: 1
+      scheduler:
+          monitor: total_val_eth_mae
+          name: ReduceLROnPlateau
+
+log:
+  name: curr_best_mlp

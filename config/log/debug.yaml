@@ -1,7 +1,7 @@
-results: null
-metric:
-  - eth
-  - mae
 name: test
+metric:
+  - Eth
+  - MAE
+results: null
 # data_img: /network/scratch/d/divya.sharma/ada/MLcroscopy/figures
 data_img: null

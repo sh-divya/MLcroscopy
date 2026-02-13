@@ -1,7 +1,9 @@
 arch:
   _target_: mlcroscopy.models.archs.ExptMLP
-  hidden_dim: 128
-  hidden_layers: 5
+  hidden_kwargs: [128, 128, 128, 128, 128]
+    # hidden: 128
+    # num: 5
+
 optim:
   loss: l2
   folds: 3
@@ -9,7 +11,7 @@ optim:
   batch_size: 8
   num_workers: 1
   batch_norm: True
-  drop_rate: 0.0
+  droprate: 0.0
   learning-rate: 0.0006649375906340088
   scheduler:
     name: "ReduceLROnPlateau"

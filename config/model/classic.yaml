@@ -1,0 +1,50 @@
+arch:
+  _target_: mlcroscopy.models.archs.ScopyClassic
+
+  micro_kwargs:
+    kernel:
+      kernel_size: 3
+      stride: 1
+      padding: 1
+    down:
+      type: pool
+      kernel:
+        kernel_size: 2
+        stride: 2
+        padding: 0
+    layers: [4, 8, 16, 8, 4]
+    final_dim: 7
+  
+  xrf_kwargs:
+    kernel:
+      kernel_size: 3
+      stride: 1
+      padding: 1
+    down:
+      type: pool
+      kernel:
+        kernel_size: 2
+        stride: 2
+        padding: 0
+    layers: [8, 16, 8]
+    final_dim: 6
+  
+  expt_kwargs:
+    do: False
+  
+  merge: flatten
+  pred_head_kwargs: [32]
+
+optim:
+  loss: l2
+  folds: 3
+  epochs: 30
+  batch_size: 16
+  num_workers: 1
+  batch_norm: True
+  droprate: 0.0
+  learning-rate: 0.003
+  scheduler:
+    name: "ReduceLROnPlateau"
+    monitor: "total_val_mae"
+  early-stopping: False

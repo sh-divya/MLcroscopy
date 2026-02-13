@@ -15,8 +15,8 @@ ROOT = Path(__file__).parent.parent.parent
 
 class Norm1D:
     def __init__(self, mean, std):
-        self.mean = mean
-        self.std = std
+        self.mean = torch.tensor(mean)
+        self.std = torch.tensor(std)
     
     def __call__(self, x):
         return (x - self.mean) / self.std
@@ -28,7 +28,10 @@ class Norm1D:
 def get_all_kv(d):
     for k, v in d.items():
         if isinstance(v, dict):
-            yield from get_all_kv(v)
+            yield (k, v)
+        elif isinstance(v, list):
+            for i in v:
+                yield (k, i)
         else:
             yield (k, v)
 

@@ -52,7 +52,6 @@ def train(cfg):
     fig_axes = None
 
     for i, (t, v) in enumerate(zip(*splits)):
-
         logObj = logger(cfg["log"])
 
         if img_path:
@@ -97,6 +96,7 @@ def train(cfg):
             log_every_n_steps=1,
             min_epochs=1,
             default_root_dir=cfg["log"]["results"],
+            accelerator=device
         )
         trainer.fit(module, light_data)
 
@@ -129,7 +129,6 @@ def train(cfg):
             print(
                 f"Average val {cfg['log']['metric'][0]} MSE across folds:{np.mean(best_val_mse)}"
             )
-
     return np.mean(best_val_mae)
 
 

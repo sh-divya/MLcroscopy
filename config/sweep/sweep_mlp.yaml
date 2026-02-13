@@ -1,8 +1,9 @@
 parameters:
   model:
     arch:
-      hidden_dim: [64, 128, 196, 256, 320, 384]
-      hidden_layers: [2, 3, 4, 5]
+      hidden_kwargs:
+        hidden: [64, 128, 196, 256, 320, 384]
+        num: [2, 3, 4, 5]
     optim:
       loss: ["l2", "smoothl1"]
       batch_size: [8, 12, 16]

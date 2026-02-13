@@ -4,6 +4,8 @@ defaults:
   - log: online
   - sweep: sweep_mlp
   - _self_
+
+data_path: /network/scratch/d/divya.sharma/ada/data
 trials: 60
 device: "cpu"
 dtype: float32

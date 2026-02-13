@@ -36,25 +36,14 @@ class ScopyLightning(pl.LightningDataModule):
         return DataLoader(self.data_test, shuffle=False, **self.dl_args)
 
 
-class ScopyTensor(Dataset):
+class ScopyBase(Dataset):
     elements = ["ag_la", "cu", "cl", "s"]
     targets = ["FE (Eth)", "FE (CO)"]
 
-    def __init__(
-        self,
-        root,
-        split_fptr,
-        micro_transform=None,
-        xrf_transform=None,
-        ytransform=None,
-    ):
+    def __init__(self, root, split_fptr, ytransform):
         self.root = Path(root)
         self.csv = pd.read_csv(self.root / "triplet.csv")
-        self.microscopy = self.root / "Microscopy"
-        self.xrf = pickle.load(open(self.root / "XRF" / "xrf_raw.pkl", "rb"))
         self.idx = [int(i) for i in open(self.root / split_fptr, "r")]
-        self.micro_transform = micro_transform if micro_transform else False
-        self.xrf_transform = xrf_transform if xrf_transform else False
         self.ytransform = ytransform
         if self.ytransform:
             self.ytransform = self.get_triplet_stats()
@@ -71,6 +60,24 @@ class ScopyTensor(Dataset):
 
     def __len__(self):
         return len(self.idx)
+    
+    def __getitem__(self):
+        raise NotImplementedError("Subclasses must implement this method")
+
+
+class ScopyTensor(ScopyBase):
+    def __init__(
+        self,
+        micro_transform=None,
+        xrf_transform=None,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.microscopy = self.root / "Microscopy"
+        self.xrf = pickle.load(open(self.root / "XRF" / "xrf_raw.pkl", "rb"))
+        self.micro_transform = micro_transform if micro_transform else False
+        self.xrf_transform = xrf_transform if xrf_transform else False
+
 
     def __getitem__(self, idx):
         idx = self.idx[idx]
@@ -85,7 +92,6 @@ class ScopyTensor(Dataset):
             mean = self.ytransform["mean"].loc[triplet_id].values
             std = self.ytransform["std"].loc[triplet_id].values
             target = torch.normal(torch.tensor(mean), torch.tensor(std))
-            # target = torch.max(target, 0 dim=1)
         else:
             pass
 
@@ -100,6 +106,53 @@ class ScopyTensor(Dataset):
             torch.float
         )
 
+
+class OnlyExpt(ScopyBase):
+
+    def __init__(self, expt_transform=None, **kwargs):
+        super().__init__(**kwargs)
+        self.expt_transform = expt_transform
+
+
+    def __getitem__(self, idx):
+        idx = self.idx[idx]
+        x = torch.tensor(self.csv.iloc[idx, :-3].values)
+        y = torch.tensor(self.csv.iloc[idx, -3:-1].values)
+        if self.expt_transform:
+            x = self.expt_transform(x)
+
+        triplet_id = self.csv.iloc[idx, -1]
+        if self.ytransform:
+            mean = self.ytransform["mean"].loc[triplet_id].values
+            std = self.ytransform["std"].loc[triplet_id].values
+            y = torch.normal(torch.tensor(mean), torch.tensor(std))
+        else:
+            pass
+        return x.to(torch.float32), y.to(torch.float32)
+
+
+class ImgPlusExpt(ScopyTensor):
+
+    def __init__(
+        self,
+        expt_transform=None,
+        micro_transform=None,
+        xrf_transform=None,
+        **kwargs,
+    ):
+        super().__init__(micro_transform, xrf_transform, **kwargs)
+        self.expt_transform = expt_transform
+
+    def __getitem__(self, idx):
+        img, y = super().__getitem__(idx)
+        img_micro, img_xrf = img
+        idx = self.idx[idx]
+        expt_x = torch.tensor(self.csv.iloc[idx, :-3].values).to(torch.float32)
+        if self.expt_transform:
+            expt_x = self.expt_transform(expt_x)
+
+        return (img_micro, img_xrf, expt_x), y
+    
 
 class Microscopy_OG(Dataset):
     def __init__(self, root, transform):
@@ -162,71 +215,3 @@ class XRF_OG(Dataset):
             if self.transform is not None:
                 img[k] = self.transform(sample)
         return img, expmnt_val
-
-
-class OnlyExpt(Dataset):
-    targets = ["FE (Eth)", "FE (CO)"]
-
-    def __init__(self, root, split_fptr, expt_transform=None, ytransform=False):
-        self.root = Path(root)
-        self.csv = pd.read_csv(self.root / "triplet.csv")
-        self.idx = [int(i) for i in open(self.root / split_fptr, "r")]
-        self.expt_transform = expt_transform
-        if ytransform:
-            self.ytransform = self.get_triplet_stats()
-        else:
-            self.ytransform = ytransform
-
-    def __len__(self):
-        return len(self.idx)
-
-    def stats(self):
-        targets = self.csv[self.targets]
-        return targets.min(), targets.max()
-
-    def get_triplet_stats(self):
-        grouped = self.csv.groupby("triplet")
-        mean = grouped.mean()[self.targets]
-        std = grouped.std()[self.targets]
-        return {"mean": mean, "std": std}
-
-    def __getitem__(self, idx):
-        idx = self.idx[idx]
-        x = torch.tensor(self.csv.iloc[idx, :-3].values)
-        y = torch.tensor(self.csv.iloc[idx, -3:-1].values)
-        if self.expt_transform:
-            x = self.expt_transform(x)
-
-        triplet_id = self.csv.iloc[idx, -1]
-        if self.ytransform:
-            mean = self.ytransform["mean"].loc[triplet_id].values
-            std = self.ytransform["std"].loc[triplet_id].values
-            y = torch.normal(torch.tensor(mean), torch.tensor(std))
-        else:
-            pass
-        return x.to(torch.float32), y.to(torch.float32)
-
-
-class ImgPlusExpt(ScopyTensor):
-
-    def __init__(
-        self,
-        root,
-        split_fptr,
-        expt_transform=None,
-        micro_transform=None,
-        xrf_transform=None,
-        ytransform=None,
-    ):
-        super().__init__(root, split_fptr, micro_transform, xrf_transform, ytransform)
-        self.expt_transform = expt_transform
-
-    def __getitem__(self, idx):
-        img, y = super().__getitem__(idx)
-        img_micro, img_xrf = img
-        idx = self.idx[idx]
-        expt_x = torch.tensor(self.csv.iloc[idx, :-3].values).to(torch.float32)
-        if self.expt_transform:
-            expt_x = self.expt_transform(x)
-
-        return (img_micro, img_xrf, expt_x), y

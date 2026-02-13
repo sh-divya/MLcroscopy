@@ -30,7 +30,8 @@ TRANSFROMS_KEY = {
     "oneD": lambda x: Norm1D(x["mean"], x["std"]),
     "norm": lambda x: Normalize(x["mean"], x["std"]),
     "crop": lambda x: RandomCrop(x),
-    "flip": {"horizontal": RandomHorizontalFlip(), "vertical": RandomVerticalFlip()},
+    "horizontal": RandomHorizontalFlip(),
+    "vertical": RandomVerticalFlip(),
     "color": lambda x: ColorJitter(**x),
 }
 

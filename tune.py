@@ -6,10 +6,10 @@ from functools import partial
 
 import hydra
 import optuna
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, ListConfig
 
 from run import train
-from mlcroscopy.utils.misc import get_expt_choices
+from mlcroscopy.utils.misc import get_expt_choices, get_all_kv
 
 warnings.filterwarnings("ignore", ".*does not have many workers.*")
 
@@ -24,10 +24,15 @@ def objective(trial, cfg, base_cfg):
     try:
         arch_cfg = cfg["model"]["arch"]
         for k, v in arch_cfg.items():
-            if len(v) > 0:
-                new_cfg["model"]["arch"][k] = trial.suggest_categorical(k, v)
-            else:
-                new_cfg["model"]["arch"][k] = v[0]
+            print(k)
+            print(v)
+            if isinstance(v, (dict, DictConfig)):
+                for p, q in v.items():
+                    choice = trial.suggest_categorical(f"{k}_{p}", list(range((len(q)))))
+                    new_cfg["model"]["arch"][k][p] = q[choice]
+            elif isinstance(v, (list, ListConfig)):
+                choice = trial.suggest_categorical(k, list(range(len(v))))
+                new_cfg["model"]["arch"][k] = v[choice]
     except KeyError:
         pass
 
@@ -47,11 +52,20 @@ def objective(trial, cfg, base_cfg):
                     new_cfg["model"]["optim"][k] = v[0]
     except KeyError:
         pass
-
+    
     new_cfg["log"]["name"] = new_cfg["log"]["name"] + str(COUNT)
     COUNT = int(COUNT) + 1
 
-    return train(new_cfg)
+    print(new_cfg["log"]["name"])
+    # print(new_cfg["model"]["arch"]["micro_kwargs"]["layers"])
+    # print(new_cfg["model"]["arch"]["xrf_kwargs"]["layers"])
+    # print(new_cfg["model"]["arch"]["expt_kwargs"])
+    # print(new_cfg["model"]["arch"]["pred_head_kwargs"])
+    # print(new_cfg["model"]["arch"]["merge"])
+    print("-----------")
+    
+    return 1
+    # return train(new_cfg)
 
 
 @hydra.main(version_base=None, config_path="config", config_name="sweep")
@@ -62,7 +76,7 @@ def run(cfg: DictConfig):
     cfg["task"]["name"] = task
     cfg["log"]["type"] = log
     prms = cfg.pop("sweep")["parameters"]
-    study = optuna.create_study(direction="minimize")
+    study = optuna.create_study(direction="minimize", sampler=optuna.samplers.RandomSampler())
     study.optimize(partial(objective, cfg=prms, base_cfg=cfg), n_trials=cfg["trials"], timeout=None)
     print("Number of finished trials: {}".format(len(study.trials)))
 

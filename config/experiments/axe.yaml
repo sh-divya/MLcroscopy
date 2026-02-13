@@ -1,0 +1,34 @@
+# @package _global_
+
+# Classic conv layer arch
+# but the pool downsample is
+# replaced with a conv(stride=2)
+
+defaults:
+  - override /model: classic
+  - override /task: scratch
+  - override /log: debug
+
+model:
+  arch:
+    _target_: mlcroscopy.models.archs.ScopyClassic
+
+    micro_kwargs:
+      down:
+        type: conv
+        kernel:
+          kernel_size: 2
+          stride: 2
+          padding: 0
+      layers: [4, 8, 16, 8, 4]
+      final_dim: 7
+    
+    xrf_kwargs:
+      down:
+        type: conv
+        kernel:
+          kernel_size: 2
+          stride: 2
+          padding: 0
+      layers: [8, 16, 8]
+      final_dim: 6

@@ -1,0 +1,22 @@
+# @package _global_
+
+# Classic conv layer arch
+# best accuracy after sweep
+
+defaults:
+  - override /model: classic
+  - override /task: scratch
+  - override /log: debug
+
+model:
+  arch:
+    _target_: mlcroscopy.models.archs.ScopyClassic
+
+    micro_kwargs:
+      layers: [4, 8, 16, 8, 4]
+    
+    xrf_kwargs:
+      layers: [16, 32, 16]
+
+    pred_head_kwargs: [512, 128, 64]
+    merge: global

@@ -1,3 +1,5 @@
+import copy
+
 from mlcroscopy.utils.constants import TRANSFROMS_KEY
 from mlcroscopy.utils.misc import get_all_kv
 
@@ -19,10 +21,12 @@ def weights_init(m):
 def make_model(config):
     model_name = config["model"]["name"]
     optim = config["model"]["optim"]
-    bn = optim.get("batch_norm", False)
-    drop = optim.get("drop_rate", None)
+    kwargs = {}
+    for p in ["batch_norm", "droprate"]:
+        if p in optim:
+            kwargs[p] = optim[p]
 
-    model = instantiate(config.model.arch, batch_norm=bn, droprate=drop).to(torch.float)
+    model = instantiate(config["model"]["arch"], **kwargs).to(torch.float)
     if model_name in ["mlp", "concat", "wide_light", "wide"]:
         model.apply(weights_init)
     elif model_name in ["dino_light"]:
@@ -31,34 +35,30 @@ def make_model(config):
 
 
 def make_datasets(config):
-    data_type = config["task"]["name"]
-    data = config["task"]
+    data = copy.copy(config["task"])
 
-    microt = None
-    xrft = None
-    exptt = None
+    transform_opt = ["micro", "xrf", "expt"]
+    kwargs = {}
 
-    try:
-        microt = make_transforms(data["transforms"]["micro"])
-        xrft = make_transforms(data["transforms"]["xrf"])
-    except KeyError:
-        exptt = make_transforms(data["transforms"])
+    for t in data["transforms"]:
+        if t in transform_opt:
+            kwargs[t + "_transform"] = make_transforms(data["transforms"][t])
+
+
+    data.pop("transforms")
+    data.pop("name")
 
     train_data = instantiate(
         data,
-        root=config["base_data"],
+        root=config["data_path"],
         split_fptr="train.idx",
-        micro_transform=microt,
-        xrf_transform=xrft,
-        expt_transform=exptt,
+        **kwargs
     )
     test_data = instantiate(
         data,
-        root=config["base_data"],
+        root=config["data_path"],
         split_fptr="test.idx",
-        micro_transform=microt,
-        xrf_transform=xrft,
-        expt_transform=exptt,
+        **kwargs
     )
 
     return train_data, test_data
@@ -82,8 +82,15 @@ def make_crossval_splits(train_data, config, seed=12345):
 
 def make_transforms(augs):
     transforms = []
-    for k, v in get_all_kv(augs):
-        t = TRANSFROMS_KEY[k]
-        transforms.append(t(v))
+    for i in get_all_kv(augs):
+        k, v = i
+        try:            
+            t = TRANSFROMS_KEY[k]
+            transforms.append(t(v))
+        except KeyError:
+            k, v = i
+            transforms.append(TRANSFROMS_KEY[v])
+        except ValueError:
+            transforms.append(TRANSFROMS_KEY[i])
 
     return Compose(transforms)
