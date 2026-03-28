@@ -7,7 +7,7 @@ performance_eth = {
     "Mean": {"MAE": 0.07, "MSE": 0.007},
     "median": {"MAE": 0.063, "MSE": 0.007},
     "MLP": {"MAE": 0.032, "MSE": 0.002},
-    "Dino": {"MAE": 0.05, "MSE": 0.005}
+    "Best": {"MAE": 0.043, "MSE": 0.003}
 
 }
 
@@ -17,7 +17,10 @@ df = df.reset_index(drop=True)
 tidy = df.melt(id_vars="Predictor", var_name="Metric").rename(columns=str.title)
 # print(tidy)
 
-fig, ax = plt.subplots(figsize=(10, 10))
+fig, ax = plt.subplots(figsize=(16, 8))
 g = sns.barplot(tidy, x="Predictor", y="Value", hue="Metric", ax=ax)
-fig.savefig("figures/baslines.png")
+ax.axhline(y=0.02, color='red', linestyle='--', linewidth=2, label='GP + Phys')
+plt.legend()
+plt.tight_layout()
+fig.savefig("figures/baselines.png")
 

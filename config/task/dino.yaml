@@ -1,4 +1,4 @@
-_target_: mlcroscopy.data.dataset.ImgPlusExpt
+_target_: mlcroscopy.data.dataset.ScopyTensor
 transforms:
   micro:
     crop: 518

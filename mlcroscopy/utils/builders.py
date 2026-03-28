@@ -12,6 +12,9 @@ from sklearn.model_selection import KFold
 
 
 def weights_init(m):
+    # Skip layers where all parameters are frozen
+    if not any(p.requires_grad for p in m.parameters()):
+        return
     if isinstance(m, nn.Linear):
         nn.init.xavier_uniform_(m.weight)
     if isinstance(m, nn.Conv2d):
@@ -29,8 +32,6 @@ def make_model(config):
     model = instantiate(config["model"]["arch"], **kwargs).to(torch.float)
     if model_name in ["mlp", "concat", "wide_light", "wide"]:
         model.apply(weights_init)
-    elif model_name in ["dino_light"]:
-        pass
     return model
 
 

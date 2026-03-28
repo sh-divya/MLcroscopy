@@ -1,0 +1,18 @@
+parameters:
+  model:
+    arch:
+      xrf_kwargs:
+        layers:
+          - [8, 16, 8]
+          - [16, 32, 16]
+          - [32, 64, 32]
+          - [16, 32, 32]
+      pred_head_kwargs:
+        - [512]
+        - [32]
+        - [512, 128]
+        - [512, 128, 64]
+        - [32, 16]
+      merge:
+        - flatten
+        - global

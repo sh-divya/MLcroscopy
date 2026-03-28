@@ -1,8 +1,6 @@
 # @package _global_
 
-# Classic conv layer arch
-# but the downsample is skipped
-# and each conv layer has stride 2
+# best spear but with expt args
 
 defaults:
   - override /model: classic

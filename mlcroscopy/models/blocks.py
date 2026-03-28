@@ -3,107 +3,75 @@ import torch.nn as nn
 
 from omegaconf import DictConfig
 
-class WideResBlock(nn.Module):
-    def __init__(self, width, droprate=0.2):
+
+class LightRes(nn.Module):
+    def __init__(
+        self, inp_channels, out_channels, kernel_kwargs, batch_norm=True, droprate=0.0
+    ):
         super().__init__()
-        self.bn1 = nn.BatchNorm2d(width)
-        self.act1 = nn.ReLU(inplace=True)
-        self.conv1 = nn.Conv2d(width, width, 3, 1, 1)
-        self.bn2 = nn.BatchNorm2d(width)
-        self.act2 = nn.ReLU(inplace=True)
-        self.drop = nn.Dropout(droprate)
-        self.conv2 = nn.Conv2d(width, width, 3, 1, 1)
-
-    def forward(self, x):
-        out = self.act1(self.bn1(x))
-        out = self.act2(self.bn2(self.conv1(out)))
-        out = self.conv2(self.drop(out))
-        return torch.add(x, out)
-
-
-class MicroBlock(nn.Module):
-    def __init__(self, res_type, res_layers, res_width, droprate):
-        super().__init__()
-        if res_type == "basic":
-            res_type = WideResBlock
-        elif res_type == "unequal":
-            raise NotImplementedError
-        else:
-            raise ValueError(f"{res_type} residual block not available")
-
-        self.init_conv = nn.Conv2d(3, res_width, 7, 2, 3)
-        self.pool1 = nn.MaxPool2d(2, 2)
-        self.res_blocks = []
-        # if batch_norm:
-        #     batch_norm = nn.BatchNorm2d(res_width)
-        # else:
-        #     batch_norm = None
-
         self.act = nn.ReLU()
+        self.inp_channels = inp_channels
+        self.out_channels = out_channels
+        self.stride = kernel_kwargs["stride"]
+        self.drop = nn.Dropout(droprate)
+        self.downsample = nn.AvgPool2d(2, 2)
 
-        for l in range(res_layers):
-            layer = res_type(res_width, droprate)
-            self.res_blocks.append(layer)
-
-        self.res_blocks = nn.ModuleList(self.res_blocks)
-        self.after_blocks = nn.ModuleList(
-            [
-                nn.Conv2d(res_width, res_width, 3, 1, 1),
-                nn.BatchNorm2d(res_width),
-                self.act,
-                nn.MaxPool2d(2, 2),
-                nn.Conv2d(res_width, res_width, 7, 1, 0),
-                nn.BatchNorm2d(res_width),
-                self.act,
-            ]
+        self.conv1 = nn.Conv2d(
+            inp_channels,
+            out_channels,
+            kernel_kwargs["kernel_size"],
+            self.stride,
+            kernel_kwargs["padding"],
+        )
+        self.bn1 = nn.BatchNorm2d(out_channels) if batch_norm else nn.Identity()
+        self.conv2 = nn.Conv2d(
+            out_channels,
+            out_channels,
+            3,
+            1,
+            1,
+        )
+        self.bn2 = nn.BatchNorm2d(out_channels) if batch_norm else nn.Identity()
+        self.residual = nn.Sequential(
+            self.conv1, self.bn1, self.act, self.drop, self.conv2, self.bn2
         )
 
-    def forward(self, x):
-
-        x = self.init_conv(x)
-        x = self.act(self.pool1(x))
-        for l in self.res_blocks:
-            x = l(x)
-
-        # if self.batch_norm:
-        #     x = self.batch_norm(x)
-
-        for l in self.after_blocks:
-            x = l(x)
+    def skip_connection(self, x):
+        if self.stride != 1 or self.inp_channels != self.out_channels:
+            # x = x[:, :, :: self.stride, :: self.stride]
+            x = self.downsample(x)
+            if self.inp_channels < self.out_channels:
+                pad = self.out_channels - self.inp_channels
+                x = nn.functional.pad(
+                    x, (0, 0, 0, 0, 0, pad), mode="constant", value=0.0
+                )
+                # print("Padded OG", x.shape)
+            else:
+                x = x[:, : self.out_channels, :, :]
+                # print("Sliced OG", x.shape)
 
         return x
 
-
-class XRFBlock(nn.Module):
-    def __init__(self, conv_width, conv_res_len, batch_norm=False):
-        super().__init__()
-        self.init_conv = nn.Conv2d(4, conv_width, 4, 1, 1)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.bn1 = nn.BatchNorm2d(conv_width) if batch_norm else False
-        self.act = nn.ReLU(inplace=True)
-
-        self.conv2 = []
-        for l in range(conv_res_len - 1):
-            self.conv2.append(nn.Conv2d(conv_width, conv_width, 3, 1, 1))
-            if batch_norm:
-                self.conv2.append(nn.BatchNorm2d(conv_width))
-            self.conv2.append(nn.ReLU())
-
-        self.conv2 = nn.ModuleList(self.conv2)
-        self.res_block = conv_res_len
-
     def forward(self, x):
-        x = self.init_conv(x)
-        x = self.act(self.pool(x))
-        if self.bn1:
-            x = self.bn1(x)
-        x = self.act(x)
-        for l in self.conv2:
-            x = l(x)
-        return x
+        # print("Input", x.shape)
+        residual = self.residual(x)
+        # print("Residual", residual.shape)
+        skip = self.skip_connection(x)
 
-def res_block():
-    pass
+        out = residual + skip
+        return self.act(out)
+
+
+def res_block(input_channels, kernel, layers, batch_norm, droprate):
+
+    block = []
+    curr = input_channels
+
+    for i, l in enumerate(layers):
+        block.append(LightRes(curr, l, kernel, batch_norm, droprate))
+        curr = l
+
+    return block
 
 
 def conv_block(
@@ -138,7 +106,6 @@ def linear_block(input_dim, layers, activation, batch_norm, droprate):
 
     if isinstance(layers, (dict, DictConfig)):
         layers = [layers["hidden"] for _ in range(layers["num"])]
-
 
     for i, l in enumerate(layers):
         block.append(nn.Linear(curr, l))

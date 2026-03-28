@@ -44,8 +44,8 @@ def crop_xrf(img):
 
 def crop(img):
     img = img[:-150, :]
-    print(img.shape)
-    raise Exception
+    # print(img.shape)
+    # raise Exception
     return img
 
 
@@ -143,6 +143,7 @@ def run_base(data, proc):
                 img = get_img_obj(fptr, color_scale)
                 # if data == "XRF":
                 #     crop_xrf(img)
+
                 all_img.append(img)
     sample_nums, all_img = zip(*sorted(zip(sample_nums, all_img), key=lambda s: s[0]))
     if proc == "og":
@@ -157,6 +158,7 @@ def run_base(data, proc):
             proc = "-".join(proc)
         else:
             all_img = [imgproc(img, proc) for img in all_img]
+
     fig = display_in_table(all_img, sample_nums)
     fig.savefig(FIG_PATH / f"{data}_{proc}.png")
 
@@ -165,6 +167,6 @@ if __name__ == "__main__":
     data = "Microscopy"
     # data = "XRF"
     # proc = "bgsub"
-    # proc = "og"
-    proc = "crop"
+    proc = "og"
+    # proc = "crop"
     run_base(data, proc)

@@ -1,0 +1,13 @@
+parameters:
+  model:
+    arch:
+      expt_kwargs:
+        layers:
+          hidden: [512, 256, 128, 64]
+          num: [2, 3, 4, 5]
+      pred_head_kwargs:
+        - [512]
+        - [32]
+        - [512, 128]
+        - [512, 128, 64]
+        - [32, 16]

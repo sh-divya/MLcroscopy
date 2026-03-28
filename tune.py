@@ -1,5 +1,6 @@
-import string
-import random
+# import string
+# import random
+import pprint
 import copy
 import warnings
 from functools import partial
@@ -17,55 +18,103 @@ warnings.filterwarnings("ignore", ".*does not have many workers.*")
 COUNT = 0
 
 
+def _set_by_path(d, path, value):
+    """Set value in nested dict `d` following the list `path`.
+
+    Creates intermediate dicts if needed.
+    """
+    cur = d
+    for key in path[:-1]:
+        if key not in cur or not isinstance(cur[key], dict):
+            cur[key] = {}
+        cur = cur[key]
+    cur[path[-1]] = value
+
+
+def _iter_sweep(node, path=None):
+    """Recursively iterate over sweep specification `node`.
+
+    Yields tuples (path_list, leaf) where leaf is one of:
+    - list: categorical choices
+    - dict with 'min' and 'max': numeric range
+    - dict with other structure: treated as categorical options (the dict itself)
+
+    `path` is the list of keys from the root sweep parameters to this leaf.
+    """
+    if path is None:
+        path = []
+
+    # Lists -> categorical choices
+    if isinstance(node, (list, ListConfig)):
+        yield (path, list(node))
+        return
+
+    # Dict-like nodes: either numeric range or nested dict to descend
+    if isinstance(node, (dict, DictConfig)):
+        # numeric range specified with 'min' and 'max'
+        if "min" in node and "max" in node:
+            yield (path, node)
+            return
+
+        # otherwise descend into keys
+        for k, v in dict(node).items():
+            yield from _iter_sweep(v, path + [str(k)])
+        return
+
+    # Fallback: single scalar value (not sweep); ignore
+    return
+
+
 def objective(trial, cfg, base_cfg):
+    """Objective wrapper used by Optuna.
+
+    This function applies sampled choices into a deep copy of `base_cfg`
+    following sweep rules in `cfg` and then (normally) would call
+    `train(new_cfg)`. For now it returns a placeholder value.
+    """
     global COUNT
     new_cfg = copy.deepcopy(base_cfg)
 
-    try:
-        arch_cfg = cfg["model"]["arch"]
-        for k, v in arch_cfg.items():
-            print(k)
-            print(v)
-            if isinstance(v, (dict, DictConfig)):
-                for p, q in v.items():
-                    choice = trial.suggest_categorical(f"{k}_{p}", list(range((len(q)))))
-                    new_cfg["model"]["arch"][k][p] = q[choice]
-            elif isinstance(v, (list, ListConfig)):
-                choice = trial.suggest_categorical(k, list(range(len(v))))
-                new_cfg["model"]["arch"][k] = v[choice]
-    except KeyError:
-        pass
+    for path, leaf in _iter_sweep(cfg):
 
-    try:
-        optim_cfg = cfg["model"]["optim"]
-        for k, v in optim_cfg.items():
-            if k == "lr":
-                low = optim_cfg["lr"]["min"]
-                high = optim_cfg["lr"]["max"]
-                new_cfg["model"]["optim"]["learning-rate"] = trial.suggest_float("lr", low, high, log=True)
-            elif k == "scheduler":
-                new_cfg["model"]["optim"][k]["name"] = trial.suggest_categorical(k, v["name"])
-            else:
-                if len(v) > 0:
-                    new_cfg["model"]["optim"][k] = trial.suggest_categorical(k, v)
-                else:
-                    new_cfg["model"]["optim"][k] = v[0]
-    except KeyError:
-        pass
-    
-    new_cfg["log"]["name"] = new_cfg["log"]["name"] + str(COUNT)
+        param_name = "sweep__" + "__".join(path) if len(path) > 0 else "sweep__root"
+
+        # Handle categorical lists
+        if isinstance(leaf, list):
+            # Use indices for sampling to preserve original element types
+            idx = trial.suggest_categorical(param_name, list(range(len(leaf))))
+            chosen = leaf[int(idx)]
+            # set the value in the new config at the same nested path
+            _set_by_path(new_cfg, path, chosen)
+
+        # Handle numeric ranges specified as dicts with min/max
+        elif isinstance(leaf, dict) and "min" in leaf and "max" in leaf:
+            low = float(leaf["min"])
+            high = float(leaf["max"])
+            # Use log scale if requested in the sweep entry
+            log = bool(leaf.get("log", True))
+            val = trial.suggest_float(param_name, low, high, log=log)
+            _set_by_path(new_cfg, path, val)
+
+        # Handle dict leaves that are actually choices (e.g., mapping to lists)
+        elif isinstance(leaf, dict):
+
+            options = list(leaf.keys())
+            if len(options) > 0:
+                choice = trial.suggest_categorical(param_name, options)
+                _set_by_path(new_cfg, path, leaf[choice])
+
+    new_cfg["log"]["name"] = new_cfg["log"].get("name", "run") + str(COUNT)
     COUNT = int(COUNT) + 1
 
     print(new_cfg["log"]["name"])
-    # print(new_cfg["model"]["arch"]["micro_kwargs"]["layers"])
-    # print(new_cfg["model"]["arch"]["xrf_kwargs"]["layers"])
-    # print(new_cfg["model"]["arch"]["expt_kwargs"])
+    # print(new_cfg["model"]["arch"]["micro_kwargs"])
+    # print(new_cfg["model"]["arch"]["xrf_kwargs"])
     # print(new_cfg["model"]["arch"]["pred_head_kwargs"])
-    # print(new_cfg["model"]["arch"]["merge"])
+    pprint.pprint(new_cfg["model"]["arch"])
     print("-----------")
-    
-    return 1
-    # return train(new_cfg)
+    # return 1
+    return train(new_cfg)
 
 
 @hydra.main(version_base=None, config_path="config", config_name="sweep")
@@ -76,7 +125,7 @@ def run(cfg: DictConfig):
     cfg["task"]["name"] = task
     cfg["log"]["type"] = log
     prms = cfg.pop("sweep")["parameters"]
-    study = optuna.create_study(direction="minimize", sampler=optuna.samplers.RandomSampler())
+    study = optuna.create_study(direction="minimize") #, sampler=optuna.samplers.RandomSampler())
     study.optimize(partial(objective, cfg=prms, base_cfg=cfg), n_trials=cfg["trials"], timeout=None)
     print("Number of finished trials: {}".format(len(study.trials)))
 

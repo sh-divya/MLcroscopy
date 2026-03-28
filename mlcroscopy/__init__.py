@@ -1,0 +1,1 @@
+from mlcroscopy.utils.pretrained import ScopyPredictor

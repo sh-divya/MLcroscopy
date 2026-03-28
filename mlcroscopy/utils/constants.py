@@ -4,6 +4,7 @@ from torchvision.transforms import (
     ColorJitter,
     RandomVerticalFlip,
     RandomHorizontalFlip,
+    RandomRotation,
     Grayscale,
     Lambda
 )
@@ -33,6 +34,7 @@ TRANSFROMS_KEY = {
     "horizontal": RandomHorizontalFlip(),
     "vertical": RandomVerticalFlip(),
     "color": lambda x: ColorJitter(**x),
+    "spin": RandomRotation(180)
 }
 
 LOSS_OPTIONS = {
