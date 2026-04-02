@@ -52,6 +52,11 @@ def train(cfg):
     fig_axes = None
 
     for i, (t, v) in enumerate(zip(*splits)):
+        if v is not None:
+            has_val = True
+        else:
+            has_val = False
+        cfg["model"]["has_val"] = has_val
         logObj = logger(cfg["log"])
 
         if img_path:
@@ -60,14 +65,17 @@ def train(cfg):
             )
         model = make_model(cfg).to(torch.float32)
         loss = LOSS_OPTIONS[cfg["model"]["optim"].get("loss", "l2")]()
+
         light_data = ScopyLightning(
             t, v, test_data, train_hp["batch_size"], train_hp["num_workers"]
         )
+
+        hparams_to_save = {"model": cfg["model"], "task": cfg["task"]}
         module = MultiRegress(
-            model, loss, train_hp["learning-rate"], device, hparams=cfg["model"]
+            model, loss, train_hp["learning-rate"], device, hparams=hparams_to_save
         )
 
-        if train_hp.get("early_stopping", False):
+        if train_hp.get("early_stopping", False) and has_val:
             callbacks = [
                 pl.callbacks.early_stopping.EarlyStopping(
                     monitor=metric_name,
@@ -79,15 +87,25 @@ def train(cfg):
             callbacks = []
 
         name = f"{cfg['log']['name']}"
-        callbacks.append(
-            pl.callbacks.ModelCheckpoint(
-                save_top_k=1,
-                monitor=f"valid_{cfg['log']['metric'][0].lower()}_{cfg['log']['metric'][1].lower()}",
-                mode="min",
-                dirpath=cfg["log"]["results"],
-                filename=name + "-{epoch:02d}-{valid_MAE:.2f}",
+        if cfg["log"]["results"] is not None and has_val:
+            callbacks.append(
+                pl.callbacks.ModelCheckpoint(
+                    save_top_k=1,
+                    monitor=f"total_val_{cfg['log']['metric'][0].lower()}_{cfg['log']['metric'][1].lower()}",
+                    mode="min",
+                    dirpath=Path(cfg["log"]["results"]) / name,
+                    filename=name + "-{epoch:02d}-{valid_MAE:.2f}",
+                )
             )
-        )
+        else:
+            callbacks.append(
+                pl.callbacks.ModelCheckpoint(
+                    save_last=True,
+                    monitor=f"total_train_{cfg['log']['metric'][1]}",
+                    dirpath=Path(cfg["log"]["results"]) / name,
+                    filename=name + "-last",
+                )
+            )
         # if cfg["log"]["type"] == "online":
         #     logObj.watch(module, log='all', log_freq=25)
         trainer = pl.Trainer(
@@ -96,7 +114,9 @@ def train(cfg):
             log_every_n_steps=1,
             min_epochs=1,
             default_root_dir=cfg["log"]["results"],
-            accelerator=device
+            accelerator=device,
+            callbacks=callbacks,
+            limit_val_batches=0 if not has_val else None,
         )
         trainer.fit(module, light_data)
 
@@ -104,7 +124,7 @@ def train(cfg):
         #     logObj.experiment.unwatch(module)
 
         logObj.experiment.finish()
-        if v:
+        if has_val:
             if cfg["log"]["metric"][0] == "Eth":
                 best_val_mae.append(module.best_eth_mae.item())
                 best_val_mse.append(module.best_eth_mse.item())
@@ -122,14 +142,18 @@ def train(cfg):
     if cfg.get("test", False):
         trainer.test(module, test_data, ckpt_path="best", verbose=False)
     else:
-        if best_val_mae:
+        if len(best_val_mae) > 0:
             print(
                 f"Average val {cfg['log']['metric'][0]} MAE across folds:{np.mean(best_val_mae)}"
             )
             print(
                 f"Average val {cfg['log']['metric'][0]} MSE across folds:{np.mean(best_val_mse)}"
             )
-    return np.mean(best_val_mae)
+            return np.mean(best_val_mae)
+
+    print("HERE")
+    print(f"Final training MAE:", trainer.callback_metrics["total_train_MAE"])
+    print(f"Final training MSE:", trainer.callback_metrics["total_train_MSE"])
 
 
 if __name__ == "__main__":

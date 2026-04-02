@@ -4,7 +4,7 @@ defaults:
   - log: online
   - _self_
 data_path: /network/scratch/d/divya.sharma/ada/data
-test: false
+test: False
 device: "cpu"
 dtype: float32
 seed: 12345

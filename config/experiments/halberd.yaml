@@ -21,6 +21,6 @@ model:
     
     expt_kwargs:
       do: True
-      layers: [128, 128, 128, 128, 128]
+      layers: [512, 512, 512, 512, 512]
 
-    pred_head_kwargs: [512]
+    pred_head_kwargs: [512, 128]

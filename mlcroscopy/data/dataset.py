@@ -29,7 +29,9 @@ class ScopyLightning(pl.LightningDataModule):
         return DataLoader(self.data_train, shuffle=True, **self.dl_args)
 
     def val_dataloader(self):
-        if self.data_val:
+        if self.data_val is None:
+            return []
+        else:
             return DataLoader(self.data_val, shuffle=False, **self.dl_args)
 
     def test_dataloader(self):

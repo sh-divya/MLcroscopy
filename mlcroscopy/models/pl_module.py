@@ -10,6 +10,7 @@ class MultiRegress(pl.LightningModule):
         self.model = model
         self.loss = loss
         self.lr = lr
+        self.has_val = hparams["model"]["has_val"]
         self.train_metric = MetricCollection(
             {"MAE": MeanAbsoluteError(), "MSE": MeanSquaredError()}, prefix="train_"
         )
@@ -43,17 +44,18 @@ class MultiRegress(pl.LightningModule):
         return loss
 
     def on_train_epoch_end(self):
+        train_epoch = self.train_metric.compute()
+        self.log("total_train_MAE", train_epoch["train_MAE"])
+        self.log("total_train_MSE", train_epoch["train_MSE"])
         self.train_metric.reset()
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         out = self.model(x)
         loss = self.loss(out, y)
-        # val_metric = self.valid_metric(out, y)
 
         self.log("val_loss", loss)
-        # self.log("Val MAE", val_metric["valid_MAE"])
-        # self.log("Val MSE", val_metric["valid_MSE"])
+
 
         val_metric = self.valid_eth(out[:, 0], y[:, 0])
 
@@ -68,16 +70,6 @@ class MultiRegress(pl.LightningModule):
         return loss
 
     def on_validation_epoch_end(self):
-        # total_val_metric = self.valid_metric.compute()
-
-        # self.log("total_val_mae", total_val_metric["valid_MAE"])
-        # self.log("total_val_mse", total_val_metric["valid_MSE"])
-
-        # if total_val_metric["valid_MAE"] < self.best_mae:
-        #     self.best_mae = total_val_metric["valid_MAE"]
-        # if total_val_metric["valid_MSE"] < self.best_mse:
-        #     self.best_mse = total_val_metric["valid_MSE"]
-        # self.valid_metric.reset()
         total_val_eth = self.valid_eth.compute()
         total_val_co = self.valid_co.compute()
 
@@ -117,7 +109,13 @@ class MultiRegress(pl.LightningModule):
             optimizer, factor=0.5, patience=4
         )
 
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {"scheduler": scheduler, "monitor": "total_val_eth_mae"},
-        }
+        if self.has_val:
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "monitor": "total_val_eth_mae",
+                },
+            }
+        else:
+            return optimizer

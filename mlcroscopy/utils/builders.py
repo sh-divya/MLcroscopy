@@ -37,17 +37,8 @@ def make_model(config):
 
 def make_datasets(config):
     data = copy.copy(config["task"])
-
-    transform_opt = ["micro", "xrf", "expt"]
-    kwargs = {}
-
-    for t in data["transforms"]:
-        if t in transform_opt:
-            kwargs[t + "_transform"] = make_transforms(data["transforms"][t])
-
-
-    data.pop("transforms")
-    data.pop("name")
+    kwargs = make_transforms(data.pop("transforms", {}))
+    data.pop("name", None)
 
     train_data = instantiate(
         data,
@@ -67,7 +58,7 @@ def make_datasets(config):
 
 def make_crossval_splits(train_data, config, seed=12345):
     folds = config.get("folds", 0)
-    if folds > 0:
+    if folds > 1:
         all_idx = list(range(len(train_data)))
         splits = KFold(n_splits=folds, shuffle=True, random_state=seed)
         all_splits = [k for k in splits.split(all_idx)]
@@ -78,20 +69,25 @@ def make_crossval_splits(train_data, config, seed=12345):
             val_folds.append(Subset(train_data, v))
         return train_folds, val_folds
     else:
-        return [train_data], None
+        return [train_data], [None]
 
 
 def make_transforms(augs):
+    transform_opt = {"micro", "xrf", "expt"}
+    if any(k in transform_opt for k in augs):
+        return {
+            f"{k}_transform": make_transforms(v)
+            for k, v in augs.items()
+            if k in transform_opt
+        }
+
     transforms = []
-    for i in get_all_kv(augs):
-        k, v = i
-        try:            
-            t = TRANSFROMS_KEY[k]
-            transforms.append(t(v))
-        except KeyError:
-            k, v = i
+    for k, v in get_all_kv(augs, stop_keys=TRANSFROMS_KEY.keys()):
+        if k in TRANSFROMS_KEY:
+            transforms.append(TRANSFROMS_KEY[k](v))
+        elif v in TRANSFROMS_KEY:
             transforms.append(TRANSFROMS_KEY[v])
-        except ValueError:
-            transforms.append(TRANSFROMS_KEY[i])
+        else:
+            raise KeyError(f"Transform {k}: {v} not available")
 
     return Compose(transforms)

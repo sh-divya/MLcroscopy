@@ -25,10 +25,13 @@ class Norm1D:
         return (x * self.std) + self.mean
 
 
-def get_all_kv(d):
+def get_all_kv(d, stop_keys=None):
+    stop_keys = set(stop_keys or [])
     for k, v in d.items():
-        if isinstance(v, dict):
+        if k in stop_keys:
             yield (k, v)
+        elif isinstance(v, dict):
+            yield from get_all_kv(v, stop_keys=stop_keys)
         elif isinstance(v, list):
             for i in v:
                 yield (k, i)

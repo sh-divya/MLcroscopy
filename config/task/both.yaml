@@ -18,4 +18,8 @@ transforms:
     flip:
       - "horizontal"
       - "vertical"
+  expt:
+    oneD:
+      mean: [5.6500e-01, 7.3500e+02, 7.9500e+02, 5.0840e-06, 1.6995e+01]
+      std: [3.3639e-01, 5.7779e+02, 5.9187e+02, 7.9433e-07, 2.2152e+00]
 ytransform: False
