@@ -1,6 +1,10 @@
+# @package _global_
+
 # Best performing MLP results
 # The hidden layers are all the dimension
 # the y values are not augmented
+# [1024, 1024, 1024]
+
 defaults:
   - override /model: mlp
   - override /task: expt
@@ -10,18 +14,17 @@ defaults:
 model:
   arch:
       _target_: mlcroscopy.models.archs.ExptMLP
-      hidden_dim: 256
-      hidden_layers: 4
+      hidden_kwargs: [512, 1024, 1024, 512] 
   optim:
       batch_norm: true
       batch_size: 8
       drop_rate: 0
-      early-stopping: false
+      early-stopping: true
       epochs: 30
-      es_patience: 5
+      es_patience: 10
       folds: 3
       learning-rate: 0.007959528835603741
-      loss: smoothl1
+      loss: l2
       num_workers: 1
       scheduler:
           monitor: total_val_eth_mae

@@ -15,6 +15,8 @@ FIG_PATH = BASE_PATH / "figures"
 
 def get_img_obj(fptr, color_scale):
     img = cv2.imread(fptr, color_scale)
+    print(img.shape)
+    raise Exception
     # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     # img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     return img
@@ -170,3 +172,4 @@ if __name__ == "__main__":
     proc = "og"
     # proc = "crop"
     run_base(data, proc)
+    # (2056, 2464, 3)

@@ -4,11 +4,12 @@
 
 defaults:
   - override /model: dino
-  - override /task: both
+  - override /task: stego
   - override /log: debug
 
 model:
   arch:
+    merge: global
     xrf_kwargs:
       kernel:
         kernel_size: 4
@@ -21,6 +22,17 @@ model:
     
     expt_kwargs:
       do: True
-      layers: [512, 512, 512, 512, 512]
+      layers: [256, 256, 256, 256]
 
-    pred_head_kwargs: [512, 128]
+    pred_head_kwargs: [512, 128, 64]
+
+  optim:
+    loss: l2
+    folds: 3
+    epochs: 50
+    batch_size: 8
+    num_workers: 1
+    batch_norm: False
+    learning-rate: 0.003
+    early-stopping: True
+    es_patience: 10

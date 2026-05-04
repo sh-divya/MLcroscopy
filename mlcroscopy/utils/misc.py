@@ -3,6 +3,7 @@ from pytorch_lightning.loggers.logger import DummyLogger
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
 import torch
+import wandb
 
 from matplotlib import pyplot as plt
 from pathlib import Path
@@ -99,6 +100,7 @@ def logger(log_cfg, tag=0):
             entity=log_cfg["user"],
             tags=[tag],
             save_dir=log_cfg.get("results", "wandb"),
+            settings=wandb.Settings(init_timeout=180)
         )
     elif log_cfg["type"] == "debug":
         logObj = DummyLogger()

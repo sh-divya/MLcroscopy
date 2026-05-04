@@ -36,3 +36,4 @@ optim:
     name: "ReduceLROnPlateau"
     monitor: "total_val_mae"
   early-stopping: False
+  es_patience: 5

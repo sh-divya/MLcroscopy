@@ -2,9 +2,13 @@ import torch
 import pytorch_lightning as pl
 import torch.optim as optim
 from torchmetrics import MeanAbsoluteError, MeanSquaredError, MetricCollection
+from mlcroscopy.models.archs import ScopyDino, ScopyRes
 
 
 class MultiRegress(pl.LightningModule):
+
+    dino_attr_name = {"ScopyDino": "model", "ScopyRes": "micro_block"}
+
     def __init__(self, model, loss, lr, device, hparams=None):
         super().__init__()
         self.model = model
@@ -21,6 +25,8 @@ class MultiRegress(pl.LightningModule):
         self.valid_co = MetricCollection(
             {"MAE": MeanAbsoluteError(), "MSE": MeanSquaredError()}, prefix="valid_co_"
         )
+
+        
         self.best_eth_mae = 1e5
         self.best_eth_mse = 1e5
         self.best_co_mae = 1e5
@@ -97,19 +103,39 @@ class MultiRegress(pl.LightningModule):
             self.logger.experiment.summary["Best CO MAE"] = self.best_co_mae
             self.logger.experiment.summary["Best CO MSE"] = self.best_co_mse
         except TypeError:
-            print("Best Eth MAE", self.best_eth_mae)
-            print("Best Eth MSE", self.best_eth_mse)
-            print("Best CO MAE", self.best_co_mae)
-            print("Best CO MSE", self.best_co_mse)
             pass
+            # print("Best Eth MAE", self.best_eth_mae)
+            # print("Best Eth MSE", self.best_eth_mse)
+            # print("Best CO MAE", self.best_co_mae)
+            # print("Best CO MSE", self.best_co_mse)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), self.lr)
+        model_type = type(self.model).__name__
+        if getattr(self.model, "pretrain", False):
+            unfrozen_params = []
+            attr_name = self.dino_attr_name[model_type]
+            for p in getattr(self.model, attr_name).parameters():
+                if p.requires_grad:
+                    print("Only if layers are unfrozen")
+                    unfrozen_params.append(p)
+            para_list = [{"params": unfrozen_params, "lr": self.lr / 10}]
+            other_params = []
+            for name, p in self.model.named_parameters():
+                if not name.startswith(f"{attr_name}."):
+                    if p.requires_grad:
+                        other_params.append(p)
+            para_list.append({"params": other_params, "lr": self.lr})
+
+        else:
+            para_list = [{"params": [p for p in self.parameters() if p.requires_grad], "lr": self.lr}]
+        
+        optimizer = optim.Adam(para_list)
+        
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, factor=0.5, patience=4
         )
 
-        if self.has_val:
+        if self.has_val:    
             return {
                 "optimizer": optimizer,
                 "lr_scheduler": {

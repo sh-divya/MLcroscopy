@@ -42,7 +42,7 @@ class ScopyBase(Dataset):
     elements = ["ag_la", "cu", "cl", "s"]
     targets = ["FE (Eth)", "FE (CO)"]
 
-    def __init__(self, root, split_fptr, ytransform):
+    def __init__(self, root, split_fptr, ytransform=False):
         self.root = Path(root)
         self.csv = pd.read_csv(self.root / "triplet.csv")
         self.idx = [int(i) for i in open(self.root / split_fptr, "r")]

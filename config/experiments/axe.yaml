@@ -20,7 +20,7 @@ model:
           kernel_size: 2
           stride: 2
           padding: 0
-      layers: [4, 8, 16, 8, 4]
+      layers: [8, 16, 32, 16, 8]
       final_dim: 7
     
     xrf_kwargs:
@@ -30,5 +30,7 @@ model:
           kernel_size: 2
           stride: 2
           padding: 0
-      layers: [8, 16, 8]
+      layers: [16, 32, 16]
       final_dim: 6
+    
+    pred_head_kwargs: [512, 128]

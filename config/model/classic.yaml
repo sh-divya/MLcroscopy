@@ -46,5 +46,6 @@ optim:
   learning-rate: 0.003
   scheduler:
     name: "ReduceLROnPlateau"
-    monitor: "total_val_mae"
+    monitor: "total_val_eth_mae"
   early-stopping: False
+  es_patience: 5

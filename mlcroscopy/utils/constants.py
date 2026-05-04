@@ -34,7 +34,7 @@ TRANSFROMS_KEY = {
     "horizontal": RandomHorizontalFlip(),
     "vertical": RandomVerticalFlip(),
     "color": lambda x: ColorJitter(**x),
-    "spin": RandomRotation(180)
+    "spin": lambda x: RandomRotation(x)
 }
 
 LOSS_OPTIONS = {

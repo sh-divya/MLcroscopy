@@ -12,7 +12,9 @@ if __name__ == '__main__':
     split = 'train.idx'
 
     # data = OnlyExpt(root, split)
-    data = ScopyTensor(root, split)
+    data = ScopyTensor(root=root, split_fptr=split)
+    data[0]
+    raise Exception
     loader = DataLoader(data, len(data))
 
     for x, _ in loader:

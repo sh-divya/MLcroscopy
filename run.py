@@ -48,6 +48,7 @@ def train(cfg):
 
     best_val_mae = []
     best_val_mse = []
+    best_epochs = []
     metric_name = f"Val {cfg['log']['metric'][0]} {cfg['log']['metric'][1]}"
     fig_axes = None
 
@@ -75,21 +76,21 @@ def train(cfg):
             model, loss, train_hp["learning-rate"], device, hparams=hparams_to_save
         )
 
-        if train_hp.get("early_stopping", False) and has_val:
-            callbacks = [
-                pl.callbacks.early_stopping.EarlyStopping(
+        if train_hp.get("early-stopping", False) and has_val:
+            es_cb = pl.callbacks.early_stopping.EarlyStopping(
                     monitor=metric_name,
-                    patience=train_hp["scheduler"]["patience"],
+                    patience=train_hp["es_patience"],
                     mode="min",
+                    min_delta=0.0005
                 )
-            ]
+            callbacks = [es_cb]
         else:
+            es_cb = None
             callbacks = []
 
         name = f"{cfg['log']['name']}"
         if cfg["log"]["results"] is not None and has_val:
-            callbacks.append(
-                pl.callbacks.ModelCheckpoint(
+            callbacks.append(pl.callbacks.ModelCheckpoint(
                     save_top_k=1,
                     monitor=f"total_val_{cfg['log']['metric'][0].lower()}_{cfg['log']['metric'][1].lower()}",
                     mode="min",
@@ -120,9 +121,12 @@ def train(cfg):
         )
         trainer.fit(module, light_data)
 
-        # if cfg["log"]["type"] == "online":
-        #     logObj.experiment.unwatch(module)
-
+        if es_cb is not None:
+            be = trainer.current_epoch - es_cb.wait_count
+            try:
+                logObj.experiment.summary["Best Epoch"] = be
+            except TypeError:
+                best_epochs.append(be)
         logObj.experiment.finish()
         if has_val:
             if cfg["log"]["metric"][0] == "Eth":
@@ -149,9 +153,9 @@ def train(cfg):
             print(
                 f"Average val {cfg['log']['metric'][0]} MSE across folds:{np.mean(best_val_mse)}"
             )
+            print(f"best epochs for each fold: {' '.join(map(str, best_epochs))}")
             return np.mean(best_val_mae)
 
-    print("HERE")
     print(f"Final training MAE:", trainer.callback_metrics["total_train_MAE"])
     print(f"Final training MSE:", trainer.callback_metrics["total_train_MSE"])
 

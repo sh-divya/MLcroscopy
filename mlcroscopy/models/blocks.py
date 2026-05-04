@@ -62,6 +62,18 @@ class LightRes(nn.Module):
         return self.act(out)
 
 
+def unfreeze_except_lastN(model, n):
+    for param in model.parameters():
+        param.requires_grad = False
+
+    if n > 0:
+        for block in model.layer[-1 * n:]:
+            for p in block.parameters():
+                p.requires_grad = True
+        for p in model.norm.parameters():
+            p.requires_grad = True
+
+
 def res_block(input_channels, kernel, layers, batch_norm, droprate):
 
     block = []

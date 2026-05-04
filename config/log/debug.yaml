@@ -2,6 +2,6 @@ name: test
 metric:
   - Eth
   - MAE
-results: null
+results: /network/scratch/d/divya.sharma/runs/ada
 # data_img: /network/scratch/d/divya.sharma/ada/MLcroscopy/figures
 data_img: null

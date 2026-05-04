@@ -1,0 +1,22 @@
+# @package _global_
+
+# dino w/o expt input
+
+defaults:
+  - override /model: dino
+  - override /task: dino
+  - override /log: debug
+
+model:
+  arch:
+    xrf_kwargs:
+      kernel:
+        kernel_size: 4
+        stride: 2
+        padding: 1
+      down:
+        type: skip
+      layers: [16, 32, 32]
+      final_dim: 6
+
+    pred_head_kwargs: [512, 128, 64]

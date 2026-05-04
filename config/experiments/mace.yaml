@@ -4,7 +4,7 @@
 
 defaults:
   - override /model: res
-  - override /task: scratch
+  - override /task: dino
   - override /log: debug
 
 model:

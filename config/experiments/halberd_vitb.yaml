@@ -1,0 +1,35 @@
+# @package _global_
+
+# dino with expt input
+
+defaults:
+  - override /model: dino
+  - override /task: stego
+  - override /log: debug
+
+model:
+  arch:
+    foundation_model_kwargs:
+      name: dinov3-vitb16-pretrain-lvd1689m
+      hidden: 768
+    merge: global
+    xrf_kwargs:
+      kernel:
+        kernel_size: 4
+        stride: 2
+        padding: 1
+      down:
+        type: skip
+      layers: [16, 32, 32]
+      final_dim: 6
+    
+    expt_kwargs:
+      do: True
+      layers: [256, 256, 256]
+
+    pred_head_kwargs: [1024, 512, 256]
+
+  optim:
+    epochs: 50
+    early-stopping: True
+    es_patience: 10

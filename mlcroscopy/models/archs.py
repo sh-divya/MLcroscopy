@@ -1,7 +1,12 @@
 import torch
 import torch.nn as nn
 from transformers import AutoModel, AutoImageProcessor
-from mlcroscopy.models.blocks import conv_block, linear_block, res_block
+from mlcroscopy.models.blocks import (
+    conv_block,
+    linear_block,
+    res_block,
+    unfreeze_except_lastN,
+)
 
 from omegaconf import DictConfig
 
@@ -27,8 +32,10 @@ class ScopyRes(nn.Module):
             self.micro_block = AutoModel.from_pretrained(name, device_map="auto")
             self.proc = AutoImageProcessor.from_pretrained(name)
 
-            for param in self.micro_block.parameters():
-                param.requires_grad = False
+            frozen_layers = micro_kwargs.get("unfrozen_layers", 0)
+            unfreeze_except_lastN(self.micro_block, frozen_layers)
+            # for param in self.micro_block.parameters():
+            #     param.requires_grad = False
 
             self.model_hidden_len = micro_kwargs.get("hidden", 384)
             self.pretrain = True
@@ -39,7 +46,9 @@ class ScopyRes(nn.Module):
             self.micro_block = nn.Sequential(*self.micro_block)
             self.pretrain = False
 
-        self.xrf_block = res_block(4, xrf_kwargs["kernel"], xrf_kwargs["layers"], batch_norm, droprate)
+        self.xrf_block = res_block(
+            4, xrf_kwargs["kernel"], xrf_kwargs["layers"], batch_norm, droprate
+        )
         self.xrf_block = nn.Sequential(*self.xrf_block)
 
         if merge == "flatten":
@@ -133,11 +142,15 @@ class ScopyDino(nn.Module):
         name = foundation_model_kwargs.get("name", "dinov3-vits16-pretrain-lvd1689m")
         self.name = f"facebook/{name}"
         self.model = AutoModel.from_pretrained(self.name, device_map="auto")
+        self.pretrain = True
+        self.embedding_type = foundation_model_kwargs.get("embedding_type", "cls")
         self.proc = AutoImageProcessor.from_pretrained(self.name)
         self.model_hidden_len = foundation_model_kwargs.get("hidden", 384)
 
-        for param in self.model.parameters():
-            param.requires_grad = False
+        frozen_layers = foundation_model_kwargs.get("unfrozen_layers", 0)
+        unfreeze_except_lastN(self.model, frozen_layers)
+        # for param in self.micro_block.parameters():
+        #     param.requires_grad = False
 
         self.act = nn.ReLU
 
@@ -201,7 +214,20 @@ class ScopyDino(nn.Module):
             "pixel_values"
         ]
         with torch.inference_mode():
-            micro_h = self.model(micro_h).last_hidden_state[:, 0, :]
+            if self.embedding_type == "cls":
+                micro_h = self.model(micro_h).last_hidden_state[:, 0, :]
+            elif self.embedding_type == "mean":
+                micro_h = self.model(micro_h).last_hidden_state[:, 5::]
+                micro_h = micro_h.mean(dim=1)
+            elif self.embedding_type == "concat":
+                cls_feat = self.model(micro_h).last_hidden_state[:, 0, :]
+                mean_patch = self.model(micro_h).last_hidden_state[:, 5::]
+                mean_patch = mean_patch.mean(dim=1)
+                micro_h = torch.cat([cls_feat, mean_patch], dim=-1)
+            else:
+                raise KeyError(
+                    f"{self.embedding_type} is not available as feature extraction for dinov3"
+                )
 
         xrf_h = self.xrf_block(xrf_h)
         xrf_h = self.merge(xrf_h)

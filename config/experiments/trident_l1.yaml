@@ -1,0 +1,49 @@
+# @package _global_
+
+# best axe but with expt args
+
+defaults:
+  - override /model: classic
+  - override /task: both
+  - override /log: debug
+
+model:
+  arch:
+    _target_: mlcroscopy.models.archs.ScopyClassic
+
+    micro_kwargs:
+      down:
+        type: conv
+        kernel:
+          kernel_size: 2
+          stride: 2
+          padding: 0
+      layers: [8, 16, 32, 16, 8]
+      final_dim: 7
+    
+    xrf_kwargs:
+      down:
+        type: conv
+        kernel:
+          kernel_size: 2
+          stride: 2
+          padding: 0
+      layers: [16, 32, 16]
+      final_dim: 6
+    
+    pred_head_kwargs: [512, 128]
+    
+    expt_kwargs:
+      do: True
+      layers: [512, 512]
+
+  optim:
+    batch_norm: False
+    batch_size: 12
+    droprate: 0.0
+    early-stopping: True
+    epochs: 50
+    es_patience: 10
+    folds: 3
+    learning-rate: 0.003
+    loss: l1

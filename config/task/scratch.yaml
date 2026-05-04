@@ -5,17 +5,19 @@ transforms:
       mean: [166.0630, 151.4283, 124.3986]
       std: [29.7448, 28.4966, 30.6221]
     crop: 240
+    spin: 180
     color:
       contrast: 0.2
       brightness: 0.2
-    flip:
-      - "horizontal"
-      - "vertical"
+    # flip:
+      # - "horizontal"
+      # - "vertical"
   xrf:
     norm:
       mean: [378035.5, 5707524.33, 24599.7, 5361.4]
       std: [362643.5, 4208579.6, 4208579.6, 2608.0]
-    flip:
-      - "horizontal"
-      - "vertical"
+    spin: 180
+    # flip:
+    #   - "horizontal"
+    #   - "vertical"
 ytransform: False

@@ -17,9 +17,10 @@ optim:
   batch_size: 16
   num_workers: 1
   batch_norm: True
-  drop_rate: 0.0
+  droprate: 0.0
   learning-rate: 0.003
   scheduler:
     name: "ReduceLROnPlateau"
     monitor: "total_val_mae"
   early-stopping: False
+  es_patience: 5

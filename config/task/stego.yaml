@@ -1,0 +1,24 @@
+_target_: mlcroscopy.data.dataset.ImgPlusExpt
+transforms:
+  micro:
+    crop: 240
+    spin: 180
+    color:
+      contrast: 0.2
+      brightness: 0.2
+    # flip:
+    #   - "horizontal"
+    #   - "vertical"
+  xrf:
+    norm:
+      mean: [378035.5, 5707524.33, 24599.7, 5361.4]
+      std: [362643.5, 4208579.6, 4208579.6, 2608.0]
+    spin: 180
+    # flip:
+    #   - "horizontal"
+    #   - "vertical"
+  expt:
+    oneD:
+      mean: [5.6500e-01, 7.3500e+02, 7.9500e+02, 5.0840e-06, 1.6995e+01]
+      std: [3.3639e-01, 5.7779e+02, 5.9187e+02, 7.9433e-07, 2.2152e+00]
+ytransform: False
