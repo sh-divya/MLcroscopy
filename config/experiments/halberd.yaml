@@ -22,9 +22,9 @@ model:
     
     expt_kwargs:
       do: True
-      layers: [256, 256, 256, 256]
+      layers: [128, 128, 128, 128, 128]
 
-    pred_head_kwargs: [512, 128, 64]
+    pred_head_kwargs: [1024, 512, 256]
 
   optim:
     loss: l2

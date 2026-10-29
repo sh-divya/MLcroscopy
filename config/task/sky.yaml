@@ -1,0 +1,17 @@
+_target_: mlcroscopy.data.dataset.ScopyTensor
+transforms:
+  micro:
+    crop: 224
+    spin: 180
+    norm:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+    color:
+      contrast: 0.2
+      brightness: 0.2
+  xrf:
+    norm:
+      mean: [378035.5, 5707524.33, 24599.7, 5361.4]
+      std: [362643.5, 4208579.6, 4208579.6, 2608.0]
+    spin: 180
+ytransform: False

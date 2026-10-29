@@ -1,0 +1,45 @@
+arch:
+  _target_: mlcroscopy.models.archs.ScopyNASA
+
+  foundation_model_kwargs:
+    use: train
+    name: resnet50
+    hidden: 2048
+    embedding_type: cls
+    unfrozen_layers: 0
+  
+  xrf_kwargs:
+    use: train
+    kernel:
+      kernel_size: 4
+      stride: 2
+      padding: 1
+    down:
+      type: skip
+      kernel:
+        kernel_size: 2
+        stride: 2
+        padding: 0
+    layers: [16, 32, 32]
+    final_dim: 6
+  
+  expt_kwargs:
+    do: False
+  
+  merge: flatten
+  pred_head_kwargs: [512]
+
+optim:
+  loss: l2
+  folds: 3
+  epochs: 30
+  batch_size: 16
+  num_workers: 1
+  batch_norm: True
+  droprate: 0.0
+  learning-rate: 0.003
+  scheduler:
+    name: "ReduceLROnPlateau"
+    monitor: "total_val_mae"
+  early-stopping: False
+  es_patience: 5

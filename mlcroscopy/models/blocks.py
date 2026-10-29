@@ -62,16 +62,30 @@ class LightRes(nn.Module):
         return self.act(out)
 
 
+def zeros_like_embedding(x, width):
+    return x.new_zeros((x.shape[0], width))
+
 def unfreeze_except_lastN(model, n):
     for param in model.parameters():
         param.requires_grad = False
 
     if n > 0:
-        for block in model.layer[-1 * n:]:
-            for p in block.parameters():
+        try:
+            for block in model.layer[-1 * n:]:
+                for p in block.parameters():
+                    p.requires_grad = True
+            for p in model.norm.parameters():
                 p.requires_grad = True
-        for p in model.norm.parameters():
-            p.requires_grad = True
+        except AttributeError:
+            blocks = [
+                block
+                for name in ["layer1", "layer2", "layer3", "layer4"]
+                for block in getattr(model, name)
+            ]
+
+            for block in blocks[-n:]:
+                for param in block.parameters():
+                    param.requires_grad = True
 
 
 def res_block(input_channels, kernel, layers, batch_norm, droprate):

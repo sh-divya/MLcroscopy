@@ -16,7 +16,7 @@ model:
       layers: [4, 8, 16, 8, 4]
     
     xrf_kwargs:
-      layers: [16, 32, 16]
+      layers: [8, 16, 8]
 
     pred_head_kwargs: [512, 128, 64]
     merge: global

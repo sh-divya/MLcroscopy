@@ -108,3 +108,43 @@ def logger(log_cfg, tag=0):
         raise ValueError(f"{log_cfg['type']} logger not available")
 
     return logObj
+
+def get_successive_crops(sample, crop_size, device):
+    if not isinstance(sample, (tuple, list)) or len(sample) != 2:
+        raise ValueError("Expected sample to be a tuple of (inputs, target)")
+
+    inputs, target = sample
+    if not isinstance(inputs, (tuple, list)) or len(inputs) == 0:
+        raise ValueError("Expected inputs to contain the microscopy tensor first")
+
+    img_tensor = inputs[0].to(device, dtype=torch.float16)
+    other_inputs = tuple(x.to(device, dtype=torch.float16).unsqueeze(0) for x in inputs[1:])
+    target = target.to(device, dtype=torch.float16)
+
+    if img_tensor.ndim != 3:
+        raise ValueError(
+            f"Expected image tensor with shape (C, H, W), got {tuple(img_tensor.shape)}"
+        )
+
+    _, height, width = img_tensor.shape
+    if crop_size > height or crop_size > width:
+        raise ValueError(
+            f"Crop size {crop_size} is larger than image size {(height, width)}"
+        )
+
+    row_starts = list(range(0, height - crop_size + 1, crop_size))
+    col_starts = list(range(0, width - crop_size + 1, crop_size))
+
+    if row_starts[-1] != height - crop_size:
+        row_starts.append(height - crop_size)
+    if col_starts[-1] != width - crop_size:
+        col_starts.append(width - crop_size)
+
+    crops = []
+    for top in row_starts:
+        for left in col_starts:
+            crop = img_tensor[:, top : top + crop_size, left : left + crop_size]
+            crop_inputs = (crop.unsqueeze(0), *other_inputs)
+            crops.append((crop_inputs, target))
+
+    return crops

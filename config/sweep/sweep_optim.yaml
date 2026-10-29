@@ -9,4 +9,4 @@ parameters:
       lr:
         min: 0.000001
         max: 0.001
-      es_patience: [5, 10]
+      # es_patience: [5, 10]

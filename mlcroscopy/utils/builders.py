@@ -8,7 +8,7 @@ import torch.nn as nn
 from hydra.utils import instantiate
 from torchvision.transforms import Compose
 from torch.utils.data import Subset
-from sklearn.model_selection import KFold
+from sklearn.model_selection import GroupKFold
 
 
 def weights_init(m):
@@ -36,32 +36,33 @@ def make_model(config):
 
 
 def make_datasets(config):
+    train_data = make_dataset(config, "train.idx")
+    test_data = make_dataset(config, "test.idx")
+
+    return train_data, test_data
+
+
+def make_dataset(config, split_fptr):
+    """Build one configured task dataset from an index-file path."""
     data = copy.copy(config["task"])
     kwargs = make_transforms(data.pop("transforms", {}))
     data.pop("name", None)
 
-    train_data = instantiate(
+    return instantiate(
         data,
         root=config["data_path"],
-        split_fptr="train.idx",
-        **kwargs
+        split_fptr=split_fptr,
+        **kwargs,
     )
-    test_data = instantiate(
-        data,
-        root=config["data_path"],
-        split_fptr="test.idx",
-        **kwargs
-    )
-
-    return train_data, test_data
 
 
 def make_crossval_splits(train_data, config, seed=12345):
     folds = config.get("folds", 0)
     if folds > 1:
         all_idx = list(range(len(train_data)))
-        splits = KFold(n_splits=folds, shuffle=True, random_state=seed)
-        all_splits = [k for k in splits.split(all_idx)]
+        triplet_ids = train_data.csv.loc[train_data.idx, "triplet"].to_numpy()
+        splits = GroupKFold(n_splits=folds, shuffle=True, random_state=seed)
+        all_splits = list(splits.split(all_idx, groups=triplet_ids))
         train_folds, val_folds = [], []
         for i in range(folds):
             t, v = all_splits[i]

@@ -5,7 +5,7 @@ defaults:
   - sweep: sweep_mlp
   - _self_
 
-data_path: /network/scratch/d/divya.sharma/ada/data
+data_path: /network/scratch/d/divya.sharma/ada/data/gde_ada
 trials: 60
 device: "cpu"
 dtype: float32

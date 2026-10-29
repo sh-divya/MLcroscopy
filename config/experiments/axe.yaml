@@ -34,3 +34,18 @@ model:
       final_dim: 6
     
     pred_head_kwargs: [512, 128]
+
+optim:
+  loss: l2
+  folds: 3
+  epochs: 30
+  batch_size: 8
+  num_workers: 1
+  batch_norm: False
+  droprate: 0
+  learning-rate: 0.003
+  scheduler:
+    name: "ReduceLROnPlateau"
+    monitor: "total_val_eth_mae"
+  early-stopping: False
+  es_patience: 5

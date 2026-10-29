@@ -1,0 +1,25 @@
+defaults:
+  - model: classic
+  - task: scratch
+  # Kept in the defaults list so training experiment configs can override it.
+  # eval.py does not create or use this logger.
+  - log: debug
+  - _self_
+
+data_path: /network/scratch/d/divya.sharma/ada/data/gde_ada
+
+# Required. May be absolute or relative to the directory where eval.py is run.
+checkpoint_path: ???
+
+# Each entry can be a short name (train -> train.idx) or an explicit index file.
+splits:
+  - train
+
+device: auto
+batch_size: null  # null uses model.optim.batch_size
+num_workers: 1
+seed: 12345
+strict: false
+
+# Set to a JSON path to save the metrics in addition to printing them.
+output_path: null

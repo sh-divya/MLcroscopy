@@ -19,4 +19,4 @@ model:
       layers: [16, 32, 32]
       final_dim: 6
 
-    pred_head_kwargs: [512, 128, 64]
+    pred_head_kwargs: [512, 128]

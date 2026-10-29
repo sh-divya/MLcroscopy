@@ -7,7 +7,11 @@ from mlcroscopy.models.archs import ScopyDino, ScopyRes
 
 class MultiRegress(pl.LightningModule):
 
-    dino_attr_name = {"ScopyDino": "model", "ScopyRes": "micro_block"}
+    pretrain_attr_name = {
+        "ScopyDino": "model",
+        "ScopyRes": "micro_block",
+        "ScopyNASA": "model",
+    }
 
     def __init__(self, model, loss, lr, device, hparams=None):
         super().__init__()
@@ -26,7 +30,6 @@ class MultiRegress(pl.LightningModule):
             {"MAE": MeanAbsoluteError(), "MSE": MeanSquaredError()}, prefix="valid_co_"
         )
 
-        
         self.best_eth_mae = 1e5
         self.best_eth_mse = 1e5
         self.best_co_mae = 1e5
@@ -61,7 +64,6 @@ class MultiRegress(pl.LightningModule):
         loss = self.loss(out, y)
 
         self.log("val_loss", loss)
-
 
         val_metric = self.valid_eth(out[:, 0], y[:, 0])
 
@@ -113,7 +115,7 @@ class MultiRegress(pl.LightningModule):
         model_type = type(self.model).__name__
         if getattr(self.model, "pretrain", False):
             unfrozen_params = []
-            attr_name = self.dino_attr_name[model_type]
+            attr_name = self.pretrain_attr_name[model_type]
             for p in getattr(self.model, attr_name).parameters():
                 if p.requires_grad:
                     print("Only if layers are unfrozen")
@@ -127,15 +129,20 @@ class MultiRegress(pl.LightningModule):
             para_list.append({"params": other_params, "lr": self.lr})
 
         else:
-            para_list = [{"params": [p for p in self.parameters() if p.requires_grad], "lr": self.lr}]
-        
+            para_list = [
+                {
+                    "params": [p for p in self.parameters() if p.requires_grad],
+                    "lr": self.lr,
+                }
+            ]
+
         optimizer = optim.Adam(para_list)
-        
+
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, factor=0.5, patience=4
         )
 
-        if self.has_val:    
+        if self.has_val:
             return {
                 "optimizer": optimizer,
                 "lr_scheduler": {

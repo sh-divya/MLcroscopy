@@ -1,0 +1,28 @@
+parameters:
+  model:
+    arch:
+      foundation_model_kwargs:
+        name:
+          - "resnet50"
+          - "resnet152"
+          - "resnet101"
+      xrf_kwargs:
+        layers:
+          - [8, 16, 8]
+          - [16, 32, 16]
+          - [32, 64, 32]
+          - [16, 32, 32]
+      expt_kwargs:
+        layers:
+          hidden: [512, 256, 128, 64]
+          num: [2, 3, 4, 5]
+      pred_head_kwargs:
+        - [512]
+        - [512, 128]
+        - [512, 128, 64]
+        - [1024]
+        - [1024, 512]
+        - [1024, 512, 256]
+        - [2048]
+        - [2048, 1024]
+        - [2048, 1024, 512]
