@@ -1,7 +1,7 @@
 import copy
 
 from mlcroscopy.utils.constants import TRANSFROMS_KEY
-from mlcroscopy.utils.misc import get_all_kv
+from mlcroscopy.utils.misc import get_all_kv, Norm1D
 
 import torch
 import torch.nn as nn
@@ -9,6 +9,12 @@ from hydra.utils import instantiate
 from torchvision.transforms import Compose
 from torch.utils.data import Subset
 from sklearn.model_selection import GroupKFold
+
+from torchvision.transforms import (
+    Normalize,
+    RandomCrop,
+    CenterCrop
+)
 
 
 def weights_init(m):
@@ -59,6 +65,23 @@ def make_dataset(config, split_fptr):
 def make_crossval_splits(train_data, config, seed=12345):
     folds = config.get("folds", 0)
     if folds > 1:
+
+        val_data = copy.copy(train_data)
+        val_data.ytransform = False
+        for attr in ("micro_transform", "xrf_transform", "expt_transform"):
+            train_transform = getattr(train_data, attr, None)
+            if not train_transform:
+                continue
+
+            val_transforms = []
+            for transform in train_transform.transforms:
+                if isinstance(transform, RandomCrop):
+                    val_transforms.append(CenterCrop(transform.size))
+                elif isinstance(transform, (Normalize, Norm1D)):
+                    val_transforms.append(transform)
+
+            setattr(val_data, attr, Compose(val_transforms))
+
         all_idx = list(range(len(train_data)))
         triplet_ids = train_data.csv.loc[train_data.idx, "triplet"].to_numpy()
         splits = GroupKFold(n_splits=folds, shuffle=True, random_state=seed)
@@ -67,7 +90,7 @@ def make_crossval_splits(train_data, config, seed=12345):
         for i in range(folds):
             t, v = all_splits[i]
             train_folds.append(Subset(train_data, t))
-            val_folds.append(Subset(train_data, v))
+            val_folds.append(Subset(val_data, v))
         return train_folds, val_folds
     else:
         return [train_data], [None]

@@ -20,21 +20,32 @@ class MultiRegress(pl.LightningModule):
         self.lr = lr
         self.has_val = hparams["model"]["has_val"]
         self.train_metric = MetricCollection(
-            {"MAE": MeanAbsoluteError(), "MSE": MeanSquaredError()}, prefix="train_"
+            {"mae": MeanAbsoluteError(), "mse": MeanSquaredError()}, prefix="train_"
         )
         self.valid_eth = MetricCollection(
-            {"MAE": MeanAbsoluteError(), "MSE": MeanSquaredError()}, prefix="valid_eth_"
+            {"mae": MeanAbsoluteError(), "mse": MeanSquaredError()}, prefix="valid_eth_"
         )
 
         self.valid_co = MetricCollection(
-            {"MAE": MeanAbsoluteError(), "MSE": MeanSquaredError()}, prefix="valid_co_"
+            {"mae": MeanAbsoluteError(), "mse": MeanSquaredError()}, prefix="valid_co_"
         )
 
         self.best_eth_mae = 1e5
         self.best_eth_mse = 1e5
         self.best_co_mae = 1e5
         self.best_co_mse = 1e5
+        self.best_epoch = 0
+        target, error = hparams.get("metric", ("Eth", "MAE"))
+        self.save_metric = f"{hparams['metric'][0].lower()}_{hparams['metric'][1].lower()}"
+        if self.save_metric not in {"eth_mae", "eth_mse", "co_mae", "co_mse"}:
+            raise ValueError(f"Unsupported validation metric: {target} {error}")
+
         self.save_hyperparameters("hparams", ignore=["model"])
+
+    @property
+    def monitored_metric(self):
+        metric_name = f"best_{self.save_metric}"
+        return getattr(self, metric_name,  None)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -46,16 +57,16 @@ class MultiRegress(pl.LightningModule):
         lr = self.optimizers().param_groups[0]["lr"]
 
         self.log("train_loss", loss)
-        self.log("Train MAE", train_batch["train_MAE"])
-        self.log("Train MSE", train_batch["train_MSE"])
+        self.log("Train MAE", train_batch["train_mae"])
+        self.log("Train MSE", train_batch["train_mse"])
         self.log("Learning rate", lr)
 
         return loss
 
     def on_train_epoch_end(self):
         train_epoch = self.train_metric.compute()
-        self.log("total_train_MAE", train_epoch["train_MAE"])
-        self.log("total_train_MSE", train_epoch["train_MSE"])
+        self.log("total_train_MAE", train_epoch["train_mae"])
+        self.log("total_train_MSE", train_epoch["train_mse"])
         self.train_metric.reset()
 
     def validation_step(self, batch, batch_idx):
@@ -67,13 +78,13 @@ class MultiRegress(pl.LightningModule):
 
         val_metric = self.valid_eth(out[:, 0], y[:, 0])
 
-        self.log("Val Eth MAE", val_metric["valid_eth_MAE"])
-        self.log("Val Eth MSE", val_metric["valid_eth_MSE"])
+        self.log("Val Eth MAE", val_metric["valid_eth_mae"])
+        self.log("Val Eth MSE", val_metric["valid_eth_mse"])
 
         val_metric = self.valid_co(out[:, 1], y[:, 1])
 
-        self.log("Val CO MAE", val_metric["valid_co_MAE"])
-        self.log("Val CO MSE", val_metric["valid_co_MSE"])
+        self.log("Val CO MAE", val_metric["valid_co_mae"])
+        self.log("Val CO MSE", val_metric["valid_co_mse"])
 
         return loss
 
@@ -81,22 +92,31 @@ class MultiRegress(pl.LightningModule):
         total_val_eth = self.valid_eth.compute()
         total_val_co = self.valid_co.compute()
 
-        self.log("total_val_eth_mae", total_val_eth["valid_eth_MAE"])
-        self.log("total_val_eth_mse", total_val_eth["valid_eth_MSE"])
-        self.log("total_val_co_mae", total_val_co["valid_co_MAE"])
-        self.log("total_val_co_mse", total_val_co["valid_co_MSE"])
+        self.log("total_val_eth_mae", total_val_eth["valid_eth_mae"])
+        self.log("total_val_eth_mse", total_val_eth["valid_eth_mse"])
+        self.log("total_val_co_mae", total_val_co["valid_co_mae"])
+        self.log("total_val_co_mse", total_val_co["valid_co_mse"])
 
-        if total_val_eth["valid_eth_MAE"] < self.best_eth_mae:
-            self.best_eth_mae = total_val_eth["valid_eth_MAE"]
-        if total_val_eth["valid_eth_MSE"] < self.best_eth_mse:
-            self.best_eth_mse = total_val_eth["valid_eth_MSE"]
-        if total_val_co["valid_co_MAE"] < self.best_co_mae:
-            self.best_co_mae = total_val_co["valid_co_MAE"]
-        if total_val_co["valid_co_MSE"] < self.best_co_mse:
-            self.best_co_mse = total_val_co["valid_co_MSE"]
+        if self.save_metric.split("_")[0] == "eth":
+            if total_val_eth[f"valid_{self.save_metric}"] < self.monitored_metric:
+                self.best_eth_mae = total_val_eth["valid_eth_mae"]
+                self.best_eth_mse = total_val_eth["valid_eth_mse"]
+                self.best_co_mae = total_val_co["valid_co_mae"]
+                self.best_co_mse = total_val_co["valid_co_mse"]
+                self.best_epoch = self.current_epoch
+        elif self.save_metric.split("_")[0] == "co":
+            if total_val_co[f"valid_{self.save_metric}"] < self.monitored_metric:
+                self.best_eth_mae = total_val_eth["valid_eth_mae"]
+                self.best_eth_mse = total_val_eth["valid_eth_mse"]
+                self.best_co_mae = total_val_co["valid_co_mae"]
+                self.best_co_mse = total_val_co["valid_co_mse"]
+                self.best_epoch = self.current_epoch
 
         self.valid_eth.reset()
         self.valid_co.reset()
+
+        if self.trainer.sanity_checking:
+            return
 
     def on_validation_end(self):
         try:
@@ -147,7 +167,7 @@ class MultiRegress(pl.LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "total_val_eth_mae",
+                    "monitor": f"total_val_{self.save_metric}",
                 },
             }
         else:

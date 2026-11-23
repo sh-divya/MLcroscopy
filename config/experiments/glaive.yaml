@@ -22,9 +22,9 @@ model:
     
     expt_kwargs:
       do: True
-      layers: [128, 128, 128, 128, 128]
+      layers: [64, 64, 64, 64, 64]
 
-    pred_head_kwargs: [2048, 1024, 512]
+    pred_head_kwargs: [512, 128, 64]
 
   optim:
     loss: l2
@@ -34,5 +34,5 @@ model:
     num_workers: 1
     batch_norm: False
     learning-rate: 0.003
-    early-stopping: True
+    early-stopping: False
     es_patience: 10

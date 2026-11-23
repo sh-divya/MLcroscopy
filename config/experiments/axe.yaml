@@ -38,7 +38,7 @@ model:
 optim:
   loss: l2
   folds: 3
-  epochs: 30
+  epochs: 50
   batch_size: 8
   num_workers: 1
   batch_norm: False

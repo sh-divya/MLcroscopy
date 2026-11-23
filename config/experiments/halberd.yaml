@@ -34,5 +34,5 @@ model:
     num_workers: 1
     batch_norm: False
     learning-rate: 0.003
-    early-stopping: True
+    early-stopping: False
     es_patience: 10

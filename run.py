@@ -49,7 +49,7 @@ def train(cfg):
     best_val_mae = []
     best_val_mse = []
     best_epochs = []
-    metric_name = f"Val {cfg['log']['metric'][0]} {cfg['log']['metric'][1]}"
+    metric_type = cfg["log"]["metric"][1]
     fig_axes = None
 
     for i, (t, v) in enumerate(zip(*splits)):
@@ -71,10 +71,12 @@ def train(cfg):
             t, v, test_data, train_hp["batch_size"], train_hp["num_workers"]
         )
 
-        hparams_to_save = {"model": cfg["model"], "task": cfg["task"]}
+        hparams_to_save = {"model": cfg["model"], "task": cfg["task"], "metric": cfg["log"]["metric"]}
         module = MultiRegress(
             model, loss, train_hp["learning-rate"], device, hparams=hparams_to_save
         )
+
+        metric_name = f"total_val_{module.save_metric}"
 
         if train_hp.get("early-stopping", False) and has_val:
             es_cb = pl.callbacks.early_stopping.EarlyStopping(
@@ -92,10 +94,10 @@ def train(cfg):
         if cfg["log"]["results"] is not None and has_val:
             callbacks.append(pl.callbacks.ModelCheckpoint(
                     save_top_k=1,
-                    monitor=f"total_val_{cfg['log']['metric'][0].lower()}_{cfg['log']['metric'][1].lower()}",
+                    monitor=metric_name,
                     mode="min",
                     dirpath=Path(cfg["log"]["results"]) / name,
-                    filename=name + "-{epoch:02d}-{valid_MAE:.2f}",
+                    filename=name + "-{epoch:02d}-{" + metric_name + ":.2f}",
                 )
             )
         else:
@@ -107,8 +109,7 @@ def train(cfg):
                     filename=name + "-last",
                 )
             )
-        # if cfg["log"]["type"] == "online":
-        #     logObj.watch(module, log='all', log_freq=25)
+
         trainer = pl.Trainer(
             max_epochs=train_hp["epochs"],
             logger=logObj,
@@ -122,7 +123,7 @@ def train(cfg):
         trainer.fit(module, light_data)
 
         if es_cb is not None:
-            be = trainer.current_epoch - es_cb.wait_count
+            be = module.best_epoch
             try:
                 logObj.experiment.summary["Best Epoch"] = be
             except TypeError:
@@ -154,7 +155,12 @@ def train(cfg):
                 f"Average val {cfg['log']['metric'][0]} MSE across folds:{np.mean(best_val_mse)}"
             )
             print(f"best epochs for each fold: {' '.join(map(str, best_epochs))}")
-            return np.mean(best_val_mae)
+            if metric_type == "MAE":
+                return float(np.mean(best_val_mae))
+            elif metric_type == "MSE":
+                return float(np.mean(best_val_mse))
+            else:
+                raise ValueError(f"Unsupported metric: {metric_type}")
 
     print(f"Final training MAE:", trainer.callback_metrics["total_train_MAE"])
     print(f"Final training MSE:", trainer.callback_metrics["total_train_MSE"])
